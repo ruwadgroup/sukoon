@@ -1,0 +1,9 @@
+target
+dist
+node_modules
+.venv
+*.lock
+pnpm-lock.yaml
+Cargo.lock
+LICENSE
+assets

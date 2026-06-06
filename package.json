@@ -1,0 +1,69 @@
+{
+  "name": "sukoon-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A privacy-first, open-source media filter that removes background music while keeping speech clear. Shared Rust engine, thin platform shells.",
+  "homepage": "https://github.com/tamimbinhakim/sukoon#readme",
+  "bugs": {
+    "url": "https://github.com/tamimbinhakim/sukoon/issues"
+  },
+  "license": "Apache-2.0",
+  "author": "Tamim Bin Hakim (@tamimbinhakim)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tamimbinhakim/sukoon.git"
+  },
+  "workspaces": [
+    "packages/ui",
+    "apps/extension",
+    "apps/desktop",
+    "apps/web"
+  ],
+  "scripts": {
+    "build:rust": "cargo build --release",
+    "test:rust": "cargo test",
+    "lint": "pnpm lint:ts && pnpm lint:rust && pnpm lint:docs",
+    "lint:ts": "oxlint .",
+    "lint:rust": "cargo clippy --all-targets -- -D warnings",
+    "lint:docs": "prettier --check \"**/*.{md,json,yaml,yml}\"",
+    "format": "pnpm format:ts && pnpm format:rust && pnpm format:docs",
+    "format:ts": "oxfmt --ignore-path .oxfmtignore .",
+    "format:rust": "cargo fmt --all",
+    "format:docs": "prettier --write \"**/*.{md,json,yaml,yml}\"",
+    "format:check": "pnpm format:check:ts && pnpm format:check:rust && pnpm format:check:docs",
+    "format:check:ts": "oxfmt --ignore-path .oxfmtignore --check .",
+    "format:check:rust": "cargo fmt --all -- --check",
+    "format:check:docs": "prettier --check \"**/*.{md,json,yaml,yml}\"",
+    "clean": "cargo clean && rimraf node_modules apps/*/node_modules apps/*/dist",
+    "prepare": "husky",
+    "commitlint": "commitlint --edit"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.0.1",
+    "@commitlint/config-conventional": "21.0.1",
+    "husky": "9.1.7",
+    "lint-staged": "17.0.4",
+    "oxfmt": "0.49.0",
+    "oxlint": "1.64.0",
+    "prettier": "3.8.3",
+    "rimraf": "6.1.3",
+    "typescript": "6.0.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "oxlint --fix",
+      "oxfmt --ignore-path .oxfmtignore"
+    ],
+    "*.rs": [
+      "rustfmt --edition 2021"
+    ],
+    "*.{md,json,yaml,yml}": [
+      "prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@11.0.9"
+}

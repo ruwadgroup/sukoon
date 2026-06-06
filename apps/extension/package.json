@@ -1,0 +1,34 @@
+{
+  "name": "@sukoon/extension",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "description": "Sukoon browser extension — real-time YouTube background-music removal with ad-aware bypass.",
+  "license": "Apache-2.0",
+  "author": "Tamim Bin Hakim (@tamimbinhakim)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build:wasm": "pnpm --filter @sukoon/dfn-wasm build",
+    "build": "vite build && node scripts/bundle-worklet.mjs",
+    "build:all": "pnpm build:wasm && pnpm build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@fontsource-variable/outfit": "^5",
+    "@sukoon/ui": "workspace:*",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/chrome": "0.0.287",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "6.0.3",
+    "vite": "8.0.12",
+    "vitest": "4.1.6"
+  }
+}

@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@sukoon/ui/globals.css";
+
+@source "../node_modules/@sukoon/ui/src/components/**/*.{ts,tsx}";
+
+body {
+  background-color: #fff;
+}

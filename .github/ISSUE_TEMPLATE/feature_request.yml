@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest a capability or improvement.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that Sukoon doesn't let you do today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - core
+        - cli
+        - extension
+        - desktop
+        - mobile
+        - web
+        - cloud
+        - halal-aware
+        - docs
+    validations:
+      required: true
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Principle check
+      options:
+        - label: This does not involve blocking, skipping, or modifying ads.
+          required: true
+        - label: This keeps separation logic in `sukoon-core` (or I've noted why not).

@@ -1,0 +1,79 @@
+[package]
+name = "sukoon-core"
+description = "Sukoon's audio engine — FFmpeg I/O and pluggable speech/music separation backends. The single source of truth for all platform shells."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["audio", "source-separation", "speech", "ffmpeg", "onnx"]
+categories = ["multimedia::audio"]
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+# Inference backend (ONNX Runtime). Optional so the crate builds without it for
+# pipeline/registry development and CI on platforms without ORT.
+ort = { version = "2.0.0-rc.10", optional = true }
+ndarray = { version = "0.16", optional = true }
+# STFT/ISTFT for the MDX-Net front-end (real-valued FFT).
+realfft = { version = "3", optional = true }
+# Weight download (small, rustls) for fetching model files on first use.
+ureq = { version = "2", optional = true }
+
+# Audio resampling for engine pre/post-processing.
+rubato = "0.16"
+# WAV decode/encode for the pipeline's audio I/O.
+hound = "3.5"
+# Content-hash cache keys.
+sha2 = "0.10"
+hex = "0.4"
+
+# DeepFilterNet — the real Fast engine. We use **only `deep_filter`'s pure-Rust DSP**
+# (STFT/ERB/band-norms via `DFState`) and run the three DFN3 ONNX graphs through ONNX Runtime
+# ourselves: the crate's bundled `tract` runtime can't load the model on current toolchains (a tract
+# optimizer bug — `duplicate name /convt3/Conv.bias`), so `default-features = false` drops tract
+# entirely. The three .onnx files are downloaded + extracted from the upstream tar.gz at first use.
+# Pinned to the same commit the registry's DFN3 ONNX bundle is taken from, so the DSP constants
+# (window, ERB bands, norm init) can't drift out of sync with the downloaded weights.
+deep_filter = { git = "https://github.com/Rikorose/DeepFilterNet", rev = "d375b2d8", default-features = false, optional = true }
+# Untar/ungzip the DeepFilterNet3 ONNX bundle on download.
+flate2 = { version = "1", optional = true }
+tar = { version = "0.4", optional = true }
+
+[features]
+default = []
+# Enables real ONNX inference (MDX-Net separation via ONNX Runtime), including the
+# STFT front-end and on-first-use weight download. Without it, engines run in a
+# passthrough "dry" mode useful for wiring up shells and tests.
+onnx = ["dep:ort", "dep:ndarray", "dep:realfft", "dep:ureq"]
+# NVIDIA CUDA acceleration (Linux/Windows with an NVIDIA GPU + CUDA runtime). Opt-in at build time
+# so the default build stays pure-CPU and portable; enable with `--features cuda`. Registered
+# non-fatally at runtime, so a CUDA-less machine still falls back to CPU.
+cuda = ["onnx", "ort/cuda"]
+# The real DeepFilterNet Fast engine: `deep_filter` DSP + the three DFN3 ONNX graphs run via ORT.
+# Implies `onnx` (needs the ORT runtime + accelerated session builder). Weights download on first use.
+dfn = ["onnx", "dep:deep_filter", "dep:flate2", "dep:tar"]
+
+# Per-platform ORT execution providers, so inference offloads to the GPU/accelerator. These are
+# additive with the base `ort` dep above and only pulled in when building for that target, so they
+# never affect other platforms' builds. All are registered non-fatally at runtime (automatic CPU
+# fallback); `SUKOON_CPU_ONLY=1` forces CPU (see `engine::with_acceleration`).
+#
+# macOS → CoreML (GPU/Neural Engine), on by default.
+[target.'cfg(target_os = "macos")'.dependencies]
+ort = { version = "2.0.0-rc.10", optional = true, features = ["coreml"] }
+
+# Windows → DirectML (any Direct3D 12 GPU: NVIDIA/AMD/Intel), on by default.
+[target.'cfg(target_os = "windows")'.dependencies]
+ort = { version = "2.0.0-rc.10", optional = true, features = ["directml"] }
+
+[dev-dependencies]
+tempfile = "3"

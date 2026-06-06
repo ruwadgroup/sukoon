@@ -1,0 +1,34 @@
+[package]
+name = "sukoon-cli"
+description = "Command-line tool to remove background music from media while keeping speech. A thin wrapper over sukoon-core."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["audio", "cli", "music-removal", "ffmpeg"]
+categories = ["command-line-utilities", "multimedia::audio"]
+
+[[bin]]
+name = "sukoon"
+path = "src/main.rs"
+
+[dependencies]
+sukoon-core.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap = { version = "4", features = ["derive"] }
+
+[features]
+default = []
+# Build with real ONNX inference (MDX-Net separation). Without it the CLI runs the engines in
+# passthrough "dry" mode — useful for smoke-testing the pipeline without weights.
+onnx = ["sukoon-core/onnx"]
+# Add the real DeepFilterNet Fast engine (real-time speech enhancement). Implies onnx.
+dfn = ["sukoon-core/dfn"]
+# NVIDIA CUDA acceleration for inference (Linux/Windows + NVIDIA GPU). Implies onnx.
+cuda = ["sukoon-core/cuda"]

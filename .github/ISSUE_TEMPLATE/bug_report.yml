@@ -1,0 +1,55 @@
+name: Bug report
+description: Something is broken or behaving unexpectedly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the report. For **separation-quality** problems, the model-eval template is a better fit.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - core
+        - cli
+        - extension
+        - desktop
+        - mobile
+        - web
+        - cloud
+        - docs
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `sukoon clean ...`
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: engine
+    attributes:
+      label: Engine
+      placeholder: deepfilternet / bandit / demucs
+  - type: input
+    id: env
+    attributes:
+      label: OS, hardware, version
+      placeholder: "Windows 11, 8 GB RAM, no GPU, sukoon 0.1.0-alpha"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      render: shell

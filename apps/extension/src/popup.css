@@ -1,0 +1,23 @@
+@import "tailwindcss";
+@import "@sukoon/ui/globals.css";
+
+@source "./**/*.{ts,tsx}";
+@source "../node_modules/@sukoon/ui/src/components/**/*.{ts,tsx}";
+
+/* Outfit (loaded via @fontsource-variable/outfit) satisfies the design system's --font-outfit. */
+:root {
+  --font-outfit: "Outfit Variable";
+}
+
+body {
+  margin: 0;
+  background-color: #fff;
+  font-family: var(--font-sans);
+}
+
+html,
+body,
+#root {
+  min-width: 18rem;
+  min-height: 23rem;
+}

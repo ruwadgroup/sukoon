@@ -1,0 +1,17 @@
+{
+  "name": "@sukoon/dfn-wasm",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "description": "Sukoon's in-page Fast engine — DeepFilterNet's streaming tract runtime + embedded DFN3 model, compiled to WebAssembly for real-time, on-device music removal in the browser.",
+  "license": "Apache-2.0",
+  "files": [
+    "pkg"
+  ],
+  "type": "module",
+  "main": "pkg/dfn_wasm.js",
+  "types": "pkg/dfn_wasm.d.ts",
+  "scripts": {
+    "build": "wasm-pack build --target no-modules --release --out-dir pkg",
+    "clean": "rimraf pkg target"
+  }
+}

@@ -1,0 +1,40 @@
+# Detached from the native workspace: this crate only ever builds for wasm32 (via wasm-pack), and we
+# don't want `cargo build` at the repo root to drag tract + an 8 MB embedded model into the native
+# build. An empty [workspace] table makes it its own workspace root.
+[workspace]
+
+[package]
+name = "dfn-wasm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Sukoon's in-page Fast engine: a wasm-bindgen wrapper over DeepFilterNet's streaming DfTract runtime (real-time speech enhancement / music removal)."
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Reuse the EXACT upstream real-time engine: DeepFilterNet's pure-Rust `tract` runtime + its DSP,
+# with the DFN3 model embedded (`default-model`). No ORT, no DSP port, no model download.
+deep_filter = { git = "https://github.com/Rikorose/DeepFilterNet", rev = "d375b2d8", default-features = false, features = [
+  "tract",
+  "default-model",
+] }
+wasm-bindgen = "0.2"
+ndarray = "0.15" # match deep_filter's ndarray so ArrayView2 types unify
+# Pin tract to the exact version deep_filter@d375b2d8 was written against. Its `^0.21.4` otherwise
+# resolves to a newer 0.21.x with breaking API changes (`symbol_table` → `symbols`, etc.) that don't
+# compile. These are direct-but-unused here purely to force the resolver to 0.21.4 graph-wide.
+tract-core = "=0.21.4"
+tract-onnx = "=0.21.4"
+tract-pulse = "=0.21.4"
+tract-hir = "=0.21.4"
+# Browser RNG backend, in case a transitive dep pulls getrandom on wasm32.
+getrandom = { version = "0.2", features = ["js"] }
+console_error_panic_hook = "0.1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1

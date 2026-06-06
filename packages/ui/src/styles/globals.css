@@ -1,0 +1,162 @@
+/* Sukoon design tokens — token + utility layer; the app's CSS entry imports tailwindcss. */
+
+@layer base {
+  button,
+  [role="button"],
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  summary {
+    cursor: pointer;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-100: var(--muted-100);
+  --color-muted-200: var(--muted-200);
+  --color-muted-300: var(--muted-300);
+  --color-muted-400: var(--muted-400);
+  --color-muted-500: var(--muted-500);
+  --color-muted-600: var(--muted-600);
+  --color-muted-700: var(--muted-700);
+  --color-muted-800: var(--muted-800);
+  --color-muted-900: var(--muted-900);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft-foreground: var(--info-soft-foreground);
+  --color-success-soft-foreground: var(--success-soft-foreground);
+  --color-warning-soft-foreground: var(--warning-soft-foreground);
+  --color-destructive-soft-foreground: var(--destructive-soft-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-family-sans: var(--font-sans);
+
+  --radius: 12px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+
+  --shadow-xs: 0 1px 2px rgba(15, 30, 33, 0.05);
+  --shadow-sm: 0 1px 3px rgba(15, 30, 33, 0.1), 0 1px 2px rgba(15, 30, 33, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(15, 30, 33, 0.1), 0 2px 4px -1px rgba(15, 30, 33, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 30, 33, 0.1), 0 4px 6px -2px rgba(15, 30, 33, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 30, 33, 0.12), 0 10px 10px -5px rgba(15, 30, 33, 0.05);
+
+  @keyframes popover-in {
+    from {
+      opacity: 0;
+      scale: 0.96;
+      filter: blur(4px);
+    }
+  }
+  @keyframes popover-out {
+    to {
+      opacity: 0;
+      scale: 0.96;
+      filter: blur(4px);
+    }
+  }
+  --animate-popover-in: popover-in 0.15s ease-out;
+  --animate-popover-out: popover-out 0.1s ease-in forwards;
+}
+
+:root {
+  --background: #eaeef0;
+  --foreground: #0f1e21;
+  --card: #ffffff;
+  --card-foreground: #0f1e21;
+  --popover: #ffffff;
+  --popover-foreground: #0f1e21;
+  --primary: #025763;
+  --primary-foreground: #ffffff;
+  --secondary: #e7ecec;
+  --secondary-foreground: #0f1e21;
+  --muted: #e7ecec;
+  --muted-100: #f1f4f4;
+  --muted-200: #e7ecec;
+  --muted-300: #d3dbdb;
+  --muted-400: #9aa8a8;
+  --muted-500: #64716f;
+  --muted-600: #4a5654;
+  --muted-700: #364240;
+  --muted-800: #232c2b;
+  --muted-900: #121817;
+  --accent: #e7ecec;
+  --accent-foreground: #0f1e21;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
+  --info: #2563eb;
+  --info-foreground: #ffffff;
+  --info-soft-foreground: #1d4ed8;
+  --success-soft-foreground: #15803d;
+  --warning-soft-foreground: #92400e;
+  --destructive-soft-foreground: #b91c1c;
+  --border: #d3dbdb;
+  --input: #e7ecec;
+  --ring: #025763;
+
+  --font-sans: var(--font-outfit, system-ui), -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-none;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+}
+
+@utility glass {
+  position: relative;
+  background: var(--color-card);
+  border: none;
+  box-shadow: var(--shadow-sm);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(180deg, var(--color-muted-300) 0%, var(--color-muted-200) 100%);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+@utility field {
+  background-color: var(--color-popover);
+  border-color: var(--color-border);
+}

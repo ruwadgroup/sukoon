@@ -1,0 +1,39 @@
+{
+  "name": "@sukoon/desktop",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "description": "Sukoon desktop app (Tauri + Next.js) — drag-and-drop music removal; also the browser extension's local companion.",
+  "license": "Apache-2.0",
+  "author": "Tamim Bin Hakim (@tamimbinhakim)",
+  "scripts": {
+    "dev": "tauri dev",
+    "dev:web": "next dev",
+    "build": "tauri build",
+    "build:web": "next build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@sukoon/ui": "workspace:*",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-notification": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "next": "16.2.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@tauri-apps/cli": "^2.1.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.6",
+    "tailwindcss": "^4",
+    "tw-animate-css": "^1",
+    "typescript": "^5"
+  }
+}

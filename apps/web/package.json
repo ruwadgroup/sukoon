@@ -1,0 +1,19 @@
+{
+  "name": "@sukoon/web",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "description": "Sukoon web app — upload a file, clean it in the cloud, download the result. Also the SEO landing page.",
+  "license": "Apache-2.0",
+  "author": "Tamim Bin Hakim (@tamimbinhakim)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "vite": "8.0.12"
+  }
+}

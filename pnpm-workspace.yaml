@@ -1,0 +1,14 @@
+packages:
+  - "packages/ui"
+  - "packages/dfn-wasm"
+  - "apps/extension"
+  - "apps/desktop"
+  - "apps/web"
+# Native post-install build scripts are disabled: sharp (Next image optimizer — unused, the desktop
+# app sets `images.unoptimized`) and unrs-resolver (a lint resolver). Neither is needed to build.
+allowBuilds:
+  # protobufjs (pulled in by onnxruntime-web for the HQ tier) ships an optional build that compiles
+  # a faster reflection path; it works fine without it, so skip it like the others.
+  protobufjs: false
+  sharp: false
+  unrs-resolver: false

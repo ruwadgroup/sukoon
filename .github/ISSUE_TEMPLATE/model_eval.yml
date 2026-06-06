@@ -1,0 +1,50 @@
+name: Separation-quality report
+description: Report where music removal under/over-performed on real content.
+labels: ["eval", "quality"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These reports are the single most valuable input to Sukoon. Be specific and, if you can,
+        attach a short clip (or a public link + timestamps). See the
+        [model-eval guide](../../docs/contributing/model-eval.md).
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Engine used
+      options:
+        - "Fast (DeepFilterNet)"
+        - "HQ (BandIt Plus)"
+        - "Fallback (Demucs mdx_q)"
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Problem kind
+      options:
+        - Music left in (under-removal)
+        - Speech damaged / muffled (over-removal)
+        - Artifacts / clicks / musical noise
+        - Nasheed / vocal-music edge case
+        - A/V sync drift
+    validations:
+      required: true
+  - type: input
+    id: content
+    attributes:
+      label: Content type
+      placeholder: "vlog / lecture / nasheed / podcast / documentary"
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What you heard
+      description: Timestamps, what was wrong, and what you expected.
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Platform / hardware
