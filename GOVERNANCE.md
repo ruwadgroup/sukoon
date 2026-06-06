@@ -38,8 +38,9 @@ This is the part we take special care with.
 - Disputes about framing are resolved in favour of _presenting multiple positions neutrally_
   rather than picking a side.
 
-If you are a qualified advisor willing to help, please reach out via
-**tamimbinhakim.work@gmail.com**.
+If you are a qualified advisor willing to help, please reach out by opening a
+[GitHub Discussion](https://github.com/ruwadgroup/sukoon/discussions) (a dedicated contact email will
+be added soon).
 
 ## Releases
 
