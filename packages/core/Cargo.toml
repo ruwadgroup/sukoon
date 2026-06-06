@@ -33,7 +33,7 @@ rubato = "0.16"
 # WAV decode/encode for the pipeline's audio I/O.
 hound = "3.5"
 # Content-hash cache keys.
-sha2 = "0.10"
+sha2 = "0.11"
 hex = "0.4"
 
 # DeepFilterNet — the real Fast engine. We use **only `deep_filter`'s pure-Rust DSP**
