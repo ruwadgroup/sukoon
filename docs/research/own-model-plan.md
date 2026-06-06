@@ -1,22 +1,25 @@
 # Proposal: A Speech-Preserving, Real-Time Music-Separation Model for Sukoon
 
-| Field             | Value                                                                                                                                                                         |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Document type** | Technical / research proposal                                                                                                                                                 |
-| **Status**        | Draft for review — not yet implemented                                                                                                                                        |
-| **Version**       | 0.3                                                                                                                                                                           |
-| **Date**          | 2026-05-30                                                                                                                                                                    |
-| **Maintainers**   | Sukoon project                                                                                                                                                                |
-| **Related**       | [`design-considerations.md`](../design-considerations.md), [`ARCHITECTURE.md`](../../ARCHITECTURE.md), [`ROADMAP.md`](../../ROADMAP.md), [`LICENSING.md`](../../LICENSING.md) |
+| Field             | Value                                                                                                                                                                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Document type** | Technical / research proposal                                                                                                                                                                                                 |
+| **Status**        | Draft for review — not yet implemented                                                                                                                                                                                        |
+| **Version**       | 0.4                                                                                                                                                                                                                           |
+| **Date**          | 2026-06-06                                                                                                                                                                                                                    |
+| **Maintainers**   | Sukoon project                                                                                                                                                                                                                |
+| **Related**       | [`extension-trials.md`](./extension-trials.md), [`design-considerations.md`](../design-considerations.md), [`ARCHITECTURE.md`](../../ARCHITECTURE.md), [`ROADMAP.md`](../../ROADMAP.md), [`LICENSING.md`](../../LICENSING.md) |
 
 ---
 
 ## Abstract
 
 Sukoon removes background **music** from media while preserving **speech**, including Qur'anic
-recitation and other narration. The current **shipped** engine is **MDX-Net (Kim Vocal 2)** run via
-ONNX Runtime — an existing pre-trained, 2-stem voice/instrumental model (see
-[`architecture/engines.md`](../architecture/engines.md)). This proposal specifies a separate,
+recitation and other narration. The **shipped** engines are an existing pre-trained pair:
+**DeepFilterNet 3** runs the real-time, in-page **extension** path (a speech _enhancer_, not a true
+separator), while **MDX-Net (Kim Vocal 2)** — a 2-stem voice/instrumental model on ONNX Runtime —
+handles **file** separation in the CLI and desktop (see
+[`architecture/engines.md`](../architecture/engines.md), and the live-path post-mortem in
+[`extension-trials.md`](./extension-trials.md) for why the browser dropped to a single engine). This proposal specifies a separate,
 forward-looking plan to train Sukoon's **own** open-source separation model with four properties:
 (1) speech and recitation are preserved as an explicit, mathematically-enforced objective; (2) three
 quality/latency tiers (Fast, Balanced, HQ) are served from a single elastically-sized checkpoint;
@@ -41,11 +44,25 @@ result.
 
 Sukoon is a monorepo with **one engine and many shells**: the separation logic lives once in
 `sukoon-core`, and each platform (CLI, browser extension, desktop, mobile) is a thin adapter
-(see [`ARCHITECTURE.md`](../../ARCHITECTURE.md)). The engine today **wraps third-party models** —
-DeepFilterNet for the real-time extension path, with MDX-Net (Kim Vocal 2) for file separation.
-Concretely, the extension runs DeepFilterNet 3 through the `deep_filter` crate's `tract` backend at
-48 kHz with a 960-sample analysis window, 480-sample hop, 481 frequency bins, and a 2-frame look-ahead
-(~40 ms latency). This is a sound starting point, but it has structural limitations:
+(see [`ARCHITECTURE.md`](../../ARCHITECTURE.md)). The engines today **wrap third-party models**, and
+the two shipped paths now differ by design:
+
+- **Extension (live).** After a whole browser-separator ladder — High/Lite MDX-Net via an MSE tap +
+  WebCodecs decode + an offscreen ONNX-Runtime document, holding the video behind a priming buffer —
+  was built and then **removed** for live-stream fragility (the full post-mortem is in
+  [`extension-trials.md`](./extension-trials.md)), the extension ships **only DeepFilterNet 3**. It is
+  compiled to WASM through the `deep_filter` crate's pure-Rust `tract` runtime (`@sukoon/dfn-wasm`,
+  model embedded, no network), streaming **48 kHz mono in 480-sample hops** (~10 ms/hop plus the
+  model's ~2-frame look-ahead). Attenuation is **capped** (≤ 40 dB) and DFN's **post-filter**
+  (`β = 0.02`) is enabled to curb the residual musical-noise/warble — currently the cheapest lever
+  toward offline quality.
+- **Files (CLI / desktop).** **MDX-Net (Kim Vocal 2)**, a pre-trained 2-stem voice/instrumental
+  separator, run via **ONNX Runtime** — latency and live-sync don't apply to file processing. (The
+  native build can't reuse the browser's `tract` path: a desktop-toolchain optimizer bug on the DFN
+  graph forces ORT there.)
+
+This is a deliberate floor, not a ceiling we are content with — and its structural limits are exactly
+what motivate a purpose-built model:
 
 - **No control over the separation taxonomy.** DeepFilterNet is a speech _enhancer_ — a two-stage
   ERB-gain + deep-filtering model that suppresses everything non-speech. It emits one enhanced speech
@@ -120,7 +137,15 @@ All figures are from the cited papers on MUSDB18-HQ unless noted.
   of order N applied per frequency bin); 20 ms window, 10 ms hop, 40 ms latency, RTF ≈ 0.02 on a
   mobile CPU, ≈ 0.19 on an i5. Informs the speech-protection path.
 - **RT-STT** (Wu et al., the primary backbone reference): a causal **single-path** TFC-TDF U-Net.
-  Empirical findings adopted here: (i) at small scale, time-only single-path RNN modelling beats
+  **Availability (important):** as of this revision RT-STT has released **no code and no weights — the
+  arXiv paper only** (Nanjing University, 17 Nov 2025), and the paper omits epochs, optimizer, and
+  training duration. So "adopting RT-STT" here means **reimplementing the architecture from the text
+  and training it ourselves** (the plan never depended on a downloadable checkpoint — see §6.7/§7.2,
+  it trains its own student by distillation). The runnable cross-check is **HS-TasNet**, whose
+  architecture _is_ published as code ([lucidrains/HS-TasNet](https://github.com/lucidrains/HS-TasNet),
+  [temismink/HS-Tasnet](https://github.com/temismink/HS-Tasnet)); it is heavier
+  (42 M vs 383 K) and ~0.5 dB lower, but it is a known-runnable fallback backbone if the RT-STT
+  reimplementation stalls (§14). Empirical findings adopted here: (i) at small scale, time-only single-path RNN modelling beats
   dual-path time/frequency modelling (5.17 vs 5.16 dB) and is faster (5.8 vs 6.7 ms/1024-sample
   frame); (ii) **channel-expansion joint modelling** of sources lifts quality (5.17 vs 4.92 dB
   without); (iii) depth 1 with L = 3 single-path repeats is the sweet spot (depth 2 → 5.51 dB but
@@ -414,18 +439,18 @@ x = Σ_k a_k · (h_k * s_k),     with per-stem gain a_k (random SNR), room IR h_
 
 **Table 3 — default hyperparameters (Fast tier; adapted from RT-STT/DTTNet).**
 
-| Item              | Value                                                                                           |
-| ----------------- | ----------------------------------------------------------------------------------------------- |
-| Sample rate       | 44.1 kHz (Fast/Balanced/HQ music); 48 kHz speech-protect path                                   |
-| STFT              | `N=1024`, `H=512`, periodic Hann, bins trimmed to `F'=384`                                      |
-| Chunk size        | 32 256 samples (`T=64` frames)                                                                  |
-| Optimiser         | AdamW, lr `1e-4`, gradient clip L2-norm 3                                                       |
-| Precision         | mixed precision (eases later fp16 PTQ)                                                          |
-| Batch             | 8 per GPU (RT-STT used 4× RTX 3090)                                                             |
-| Channel increment | `g=16`; single-path repeats `L=3`; depth 1                                                      |
-| Sources           | `S=5`                                                                                           |
-| Augmentation      | pitch shift {−2,−1,0,1,2} st; time-stretch {±20,±10,0}%; random SNR, room IR, codec round-trips |
-| Fine-tune         | add L1 regularisation (per RT-STT)                                                              |
+| Item              | Value                                                                                                                                                                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Sample rate       | 44.1 kHz (Fast/Balanced/HQ music); 48 kHz speech-protect path                                                                                                                                                                                                      |
+| STFT              | `N=1024`, `H=512`, periodic Hann, bins trimmed to `F'=384`                                                                                                                                                                                                         |
+| Chunk size        | 32 256 samples (`T=64` frames)                                                                                                                                                                                                                                     |
+| Optimiser         | AdamW, lr `1e-4`, gradient clip L2-norm 3                                                                                                                                                                                                                          |
+| Precision         | mixed precision (eases later fp16 PTQ)                                                                                                                                                                                                                             |
+| Batch             | 8 per GPU × 4 GPUs = **effective 32** (RT-STT's setup). On free tiers (Kaggle T4×2, 16 GB) the per-step batch is far smaller — use **gradient accumulation** to keep the effective batch near 32, since small effective batches are known to hurt MSS convergence. |
+| Channel increment | `g=16`; single-path repeats `L=3`; depth 1                                                                                                                                                                                                                         |
+| Sources           | `S=5`                                                                                                                                                                                                                                                              |
+| Augmentation      | pitch shift {−2,−1,0,1,2} st; time-stretch {±20,±10,0}%; random SNR, room IR, codec round-trips                                                                                                                                                                    |
+| Fine-tune         | add L1 regularisation (per RT-STT)                                                                                                                                                                                                                                 |
 
 **Curriculum.**
 
@@ -452,9 +477,10 @@ free from the elastic Fast configuration.
 
 The graph (2-D convs + LSTM + linear) exports to **ONNX** and runs via:
 
-- **`tract`** (pure-Rust, already used by `sukoon-core`) for native CLI/desktop;
-- **`ort`** (ONNX Runtime) where a heavier runtime is acceptable;
-- **WASM + SIMD** for the browser extension;
+- **`tract` + WASM/SIMD** for the **browser extension** — the pure-Rust path already proven by
+  `@sukoon/dfn-wasm` (DFN runs in `tract`-WASM in the page today);
+- **`ort`** (ONNX Runtime) for **native CLI/desktop**, which is what the DFN engine already uses
+  there (the desktop toolchain hits a `tract` optimizer bug on this graph, so ORT is the native path);
 - **Core ML / NNAPI** on mobile (note: TensorRT, used for RT-STT's headline number, is CUDA-only;
   on Apple silicon and the browser the equivalent path is Core ML / ONNX-Runtime fp16).
 
@@ -571,19 +597,26 @@ Ship the product now on pre-trained models (already scaffolded), train the owned
 incrementally on free compute, and provide the HQ tier via an existing separator until funding allows
 training a bespoke one.
 
+**One cheap exception worth flagging.** The Fast tier (Phase B, ~300–500 GPU-h) is the keystone — it
+yields the first owned engine — and it is the one phase that does **not** need months of free-tier
+patience. The same run is **~$100–250 on a marketplace 24 GB GPU** (RTX 3090/4090 at ~$0.2–0.4/h on
+Vast.ai/RunPod), finishing in **2–5 days**, versus ~10–17 weeks at Kaggle's ~30 GPU-h/week on weaker
+T4×2 cards that can't hold the effective batch. For the project's highest-leverage milestone, that is
+the cheapest meaningful spend available — see the **Small** row in §15.
+
 ---
 
 ## 13. Project plan
 
-| Phase | Goal                                                                                   | Exit criteria                                                           |
-| ----- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **A** | Data pipeline + synthetic-remix corpus; targeted teacher pseudo-labelling; provenance. | Reproducible labelled data; provenance recorded.                        |
-| **B** | Reproduce RT-STT (4-stem MUSDB), fp16 ONNX export, wire behind the `Engine` trait.     | Real-time on CPU; SDR within ±0.3 dB of paper; live in CLI/extension.   |
-| **C** | Five-stem taxonomy + DnR; mode-gain matrix; asymmetric voice loss.                     | Modes pass correctness tests; recitation voice-preservation meets gate. |
-| **D** | Teacher-ensemble distillation into the small tiers.                                    | Fast-tier SDR exceeds vanilla RT-STT (stretch ≥ 6 dB).                  |
-| **E** | Elastic supernet → Fast/Balanced/HQ from one checkpoint (fallback: distilled family).  | Each tier meets its §10 target.                                         |
-| **F** | Optimise (fp16/prune/ONNX/WASM/Core ML/NNAPI); streaming runtime; mobile.              | Latency/RTF targets met on all platforms.                               |
-| **G** | Phase-0 evaluation gate; scholarly review of modes; provenance/licence review.         | Repo gates green; advisor sign-off.                                     |
+| Phase | Goal                                                                                                                                | Exit criteria                                                                                                                                                                                                                   |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A** | Data pipeline + synthetic-remix corpus; targeted teacher pseudo-labelling; provenance.                                              | Reproducible labelled data; provenance recorded.                                                                                                                                                                                |
+| **B** | **Reimplement** RT-STT from the paper (no code/weights exist — §3), 4-stem MUSDB, fp16 ONNX export, wire behind the `Engine` trait. | Real-time on CPU; **SDR within ±0.5–1.0 dB of paper** (widened: no reference impl to diff against, paper omits epochs/optimizer/duration); live in CLI/extension. Fall back to HS-TasNet (published code) if it won't converge. |
+| **C** | Five-stem taxonomy + DnR; mode-gain matrix; asymmetric voice loss.                                                                  | Modes pass correctness tests; recitation voice-preservation meets gate.                                                                                                                                                         |
+| **D** | Teacher-ensemble distillation into the small tiers.                                                                                 | Fast-tier SDR exceeds vanilla RT-STT (stretch ≥ 6 dB).                                                                                                                                                                          |
+| **E** | Elastic supernet → Fast/Balanced/HQ from one checkpoint (fallback: distilled family).                                               | Each tier meets its §10 target.                                                                                                                                                                                                 |
+| **F** | Optimise (fp16/prune/ONNX/WASM/Core ML/NNAPI); streaming runtime; mobile.                                                           | Latency/RTF targets met on all platforms.                                                                                                                                                                                       |
+| **G** | Phase-0 evaluation gate; scholarly review of modes; provenance/licence review.                                                      | Repo gates green; advisor sign-off.                                                                                                                                                                                             |
 
 Phase B is the keystone: it validates the streaming runtime end-to-end and yields an owned Fast engine
 before any expenditure.
@@ -592,14 +625,16 @@ before any expenditure.
 
 ## 14. Risks and mitigations
 
-| Risk                                          | Mitigation                                                                   |
-| --------------------------------------------- | ---------------------------------------------------------------------------- |
-| Free compute too slow for larger models       | Keep custom training to small tiers; pre-trained models for HQ.              |
-| Recitation data scarce / licence-restricted   | Combine pseudo-labelling + synthetic remixing; per-item provenance.          |
-| Elastic training unstable                     | Fall back to a distilled family of fixed-size students.                      |
-| Voice clipped on nasheed content              | Dedicated stem + softmax consistency + asymmetric penalty + recitation gate. |
-| fp16/quantisation regression off-CUDA         | Validate Core ML / ONNX-Runtime fp16 parity; keep fp32 fallback.             |
-| Owned model below the existing wrap initially | Treat as additive; ship pre-trained models until it surpasses them.          |
+| Risk                                                                                                     | Mitigation                                                                                                                                                                                                                                 |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **RT-STT reimplementation doesn't reproduce 5.17 dB** (no public code/weights; missing training details) | Treat Phase B as research with widened ±0.5–1.0 dB tolerance and extra iteration budget; cross-check against **HS-TasNet's published architecture code**; remember the student is trained by distillation, not by matching RT-STT weights. |
+| **Backbone reimplementation stalls entirely**                                                            | Switch backbone to **HS-TasNet** ([lucidrains](https://github.com/lucidrains/HS-TasNet)) — runnable code today; heavier (42 M) and ~0.5 dB lower, but unblocks the streaming-separator path.                                               |
+| Free compute too slow for larger models                                                                  | Keep custom training to small tiers; pre-trained models for HQ. The keystone Fast tier escapes free-tier limits for **~$100–250** on a rented GPU (§12.3).                                                                                 |
+| Recitation data scarce / licence-restricted                                                              | Combine pseudo-labelling + synthetic remixing; per-item provenance.                                                                                                                                                                        |
+| Elastic training unstable                                                                                | Fall back to a distilled family of fixed-size students.                                                                                                                                                                                    |
+| Voice clipped on nasheed content                                                                         | Dedicated stem + softmax consistency + asymmetric penalty + recitation gate.                                                                                                                                                               |
+| fp16/quantisation regression off-CUDA                                                                    | Validate Core ML / ONNX-Runtime fp16 parity; keep fp32 fallback.                                                                                                                                                                           |
+| Owned model below the existing wrap initially                                                            | Treat as additive; ship pre-trained models until it surpasses them.                                                                                                                                                                        |
 
 ---
 
@@ -623,11 +658,11 @@ Donations would be used **strictly** for the project's stated purpose and nothin
 
 Funding maps to outcomes as follows:
 
-| Approx. funding | Enables                                                                                   |
-| --------------- | ----------------------------------------------------------------------------------------- |
-| Small           | A complete Fast tier trained without free-tier limits; a larger recitation corpus.        |
-| Moderate        | Teacher labelling at scale; the five-stem and distillation phases (C–D).                  |
-| Larger          | A bespoke HQ tier and the elastic supernet (E), trained from scratch and openly released. |
+| Approx. funding   | Enables                                                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Small (~$100–250) | The keystone Fast tier (Phase B) trained on a rented 24 GB GPU in days instead of ~10–17 free-tier weeks; plus a larger recitation corpus. |
+| Moderate          | Teacher labelling at scale; the five-stem and distillation phases (C–D).                                                                   |
+| Larger            | A bespoke HQ tier and the elastic supernet (E), trained from scratch and openly released.                                                  |
 
 Commitments:
 

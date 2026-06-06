@@ -93,6 +93,16 @@ cargo build --release -p sukoon-cli --features onnx
 
 Full setup — including FFmpeg, model downloads, and the JS workspaces — is in [docs/start/installation.md](./docs/start/installation.md).
 
+## Install the browser extension
+
+The extension isn't on the Chrome Web Store yet. To run it now — **Chrome, Edge, or Brave 124+**, about a minute:
+
+1. **Get the files:** download **`sukoon-extension.zip`** from the [latest release](https://github.com/ruwadgroup/sukoon/releases/latest) and unzip it — or build it from source (`pnpm --filter @sukoon/extension build:all` → use `apps/extension/dist`).
+2. Open `chrome://extensions`, enable **Developer mode** (top-right), click **Load unpacked**, and select the folder.
+3. Pin **Sukoon — Music Remover**, open YouTube (or Facebook / Instagram / X / any HTML5 video), and toggle it on.
+
+Everything runs on-device — nothing is uploaded. Full steps, browser support, and updating: **[apps/extension/README.md](./apps/extension/README.md#install)**.
+
 ## Status
 
 Sukoon is in **early alpha** (`0.1.0-alpha`). The Rust core, CLI, and browser extension are the first targets; desktop, web, and mobile follow the [phased roadmap](./ROADMAP.md). APIs and the model interface will change before `0.1.0`. Pin commits if you build on it now.
