@@ -11,6 +11,7 @@
     "build:wasm": "pnpm --filter @sukoon/dfn-wasm build",
     "build": "vite build && node scripts/bundle-worklet.mjs",
     "build:all": "pnpm build:wasm && pnpm build",
+    "package": "pnpm build:all && rimraf sukoon-extension.zip && cd dist && zip -qr -X ../sukoon-extension.zip . && cd ..",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "clean": "rimraf dist"
