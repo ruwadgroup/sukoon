@@ -1,0 +1,143 @@
+name: Release
+
+# Builds and attaches every shippable artifact to a GitHub Release:
+#   - browser extension  (sukoon-extension.zip)
+#   - CLI binaries        (linux / macOS / Windows)
+#   - desktop installers  (.dmg / .msi / .AppImage via Tauri)
+#
+# Triggers on a version tag (e.g. v0.1.0-alpha), or manually for an existing tag.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build the release for, e.g. v0.1.0-alpha"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  # On a tag push this is the tag; on manual dispatch it's the provided input.
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  release:
+    name: Ensure release exists
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the (pre)release if it doesn't exist yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$REPO" --prerelease \
+              --title "Sukoon $TAG" --generate-notes
+          fi
+
+  extension:
+    name: Extension (zip)
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - run: pnpm install --frozen-lockfile
+      - name: Build extension bundle
+        run: pnpm --filter @sukoon/extension package
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh release upload "$TAG" apps/extension/sukoon-extension.zip --repo "$REPO" --clobber
+
+  cli:
+    name: CLI (${{ matrix.asset }})
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: sukoon-linux-x86_64
+            bin: sukoon
+          - os: macos-latest
+            asset: sukoon-macos-arm64
+            bin: sukoon
+          - os: windows-latest
+            asset: sukoon-windows-x86_64.exe
+            bin: sukoon.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build CLI (with ONNX engine)
+        run: cargo build --release -p sukoon-cli --features onnx
+      - name: Stage binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "target/release/${{ matrix.bin }}" "dist/${{ matrix.asset }}"
+      - name: Upload to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh release upload "$TAG" "dist/${{ matrix.asset }}" --repo "$REPO" --clobber
+
+  desktop:
+    name: Desktop (${{ matrix.os }})
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "apps/desktop/src-tauri -> target"
+      - name: Install Linux desktop dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf build-essential
+      - run: pnpm install --frozen-lockfile
+      - name: Build and upload desktop bundles
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ env.TAG }}
+          releaseName: Sukoon ${{ env.TAG }}
+          # The release is created by the `release` job above; Tauri attaches its
+          # bundles (.dmg / .msi / .AppImage) to it.
