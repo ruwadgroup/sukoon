@@ -284,7 +284,6 @@ impl Pipeline {
         };
         self.engine
             .separate_into(buffer, &mut on_chunk, &mut sink)?;
-        drop(sink);
 
         // Spawn an encoder even if the engine emitted nothing (degenerate empty input) so we still
         // write a valid output container.
@@ -340,9 +339,9 @@ impl Pipeline {
             let offset = (read_start as i64 - lo) as usize;
 
             let mut planar = vec![vec![0.0f32; win_len]; in_ch];
-            for c in 0..in_ch {
+            for (c, planar_c) in planar.iter_mut().enumerate() {
                 if let Some(src) = data.channels.get(c) {
-                    planar[c][offset..offset + src.len()].copy_from_slice(src);
+                    planar_c[offset..offset + src.len()].copy_from_slice(src);
                 }
             }
             let window = crate::AudioBuffer {
