@@ -29,7 +29,7 @@ realfft = { version = "3", optional = true }
 ureq = { version = "2", optional = true }
 
 # Audio resampling for engine pre/post-processing.
-rubato = "0.16"
+rubato = "3.0"
 # WAV decode/encode for the pipeline's audio I/O.
 hound = "3.5"
 # Content-hash cache keys.
