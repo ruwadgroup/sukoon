@@ -45,9 +45,11 @@ representing the community in public spaces.
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the
-maintainers at **tamimbinhakim.work@gmail.com**. All complaints will be reviewed and investigated
-promptly and fairly. Maintainers will respect the privacy and security of the reporter.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported privately to the
+maintainers by opening a confidential report through the repository's **Security Advisories**
+("Report a vulnerability") — the interim private channel until a dedicated contact email is added. All
+complaints will be reviewed and investigated promptly and fairly. Maintainers will respect the privacy
+and security of the reporter.
 
 ## Attribution
 

@@ -13,10 +13,11 @@ Sukoon is in alpha. Security fixes are applied to `main` and the latest tagged r
 
 **Please do not open a public issue for security vulnerabilities.**
 
-Report privately via one of:
+Report privately through GitHub:
 
-- GitHub **Security Advisories** → "Report a vulnerability" on the repository.
-- Email **tamimbinhakim.work@gmail.com** with subject `SECURITY: Sukoon`.
+- Open a confidential report via **Security Advisories** → "Report a vulnerability" on the repository.
+
+_(A dedicated security contact email will be added soon.)_
 
 Include: a description, steps to reproduce, affected component (`core`, `cli`, `extension`,
 `desktop`), and impact. We aim to acknowledge within 72 hours and to ship a fix or
