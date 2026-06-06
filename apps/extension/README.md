@@ -7,6 +7,37 @@ sharing the [`@sukoon/ui`](../../packages/ui) design system with the desktop app
 All audio that plays, **including ads**, is processed the same way. Sukoon never blocks, skips,
 mutes, or disables ads.
 
+## Install
+
+> **Status: early alpha.** A one-click **Chrome Web Store** listing is planned. Until then, install the
+> unpacked build below — it takes about a minute and works in **Chrome, Edge, and Brave 124+**.
+
+**1. Get the extension files** — either:
+
+- **Download** `sukoon-extension.zip` from the [latest release](https://github.com/ruwadgroup/sukoon/releases/latest) and unzip it (you'll get a folder containing `manifest.json`); **or**
+- **Build it** (if no release is published yet):
+  ```bash
+  git clone https://github.com/ruwadgroup/sukoon.git
+  cd sukoon && pnpm install
+  pnpm --filter @sukoon/extension build:all   # builds the DFN WASM + bundles dist/
+  ```
+  The folder to use is `apps/extension/dist`. (To make the shareable zip yourself:
+  `pnpm --filter @sukoon/extension package` → `apps/extension/sukoon-extension.zip`.)
+
+**2. Load it into your browser**
+
+1. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`).
+2. Turn on **Developer mode** (top-right toggle).
+3. Click **Load unpacked** and select the unzipped folder (or `apps/extension/dist`).
+4. Pin **Sukoon — Music Remover**, then open YouTube and toggle it on — from the in-page button or the
+   toolbar popup.
+
+It works on **YouTube, Facebook, Instagram, X, and any page with an HTML5 `<video>`**. Everything runs
+**on-device** — nothing is uploaded, and no code or model is fetched at runtime.
+
+**Updating:** re-download (or rebuild), then click the **↻ reload** icon on the Sukoon card in
+`chrome://extensions`.
+
 ## How it works
 
 ```
@@ -60,8 +91,9 @@ pnpm --filter @sukoon/extension build    # bundle + stage worklet/wasm → dist/
 pnpm --filter @sukoon/extension dev      # watch mode for TS/React
 ```
 
-Load `dist/` (with `manifest.json`) as an unpacked extension in `chrome://extensions`. Nothing is
-fetched at runtime.
+Then load `apps/extension/dist` as an unpacked extension (see [Install](#install) for the exact
+clicks). `pnpm dev` rebuilds on change — hit the **↻ reload** icon on the Sukoon card to pick up edits.
+Nothing is fetched at runtime.
 
 ## Store compliance
 

@@ -14,7 +14,7 @@ The smallest path to a working `sukoon` build.
 ## Clone and build the core + CLI
 
 ```bash
-git clone https://github.com/tamimbinhakim/sukoon.git
+git clone https://github.com/ruwadgroup/sukoon.git
 cd sukoon
 cargo build --release -p sukoon-cli
 ```

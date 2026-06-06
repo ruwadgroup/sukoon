@@ -32,7 +32,7 @@ better mostly through honest, specific feedback on where the separation falls sh
 | FFmpeg | ≥ 6 (LGPL build) | audio I/O at runtime               |
 
 ```bash
-git clone https://github.com/tamimbinhakim/sukoon.git
+git clone https://github.com/ruwadgroup/sukoon.git
 cd sukoon
 cargo build                 # core + cli
 pnpm install                # JS workspaces
@@ -69,7 +69,7 @@ Scopes follow the package names: `core`, `cli`, `extension`, `desktop`, `web`, `
 
 ## Reporting bugs & ideas
 
-Use the [issue templates](https://github.com/tamimbinhakim/sukoon/issues/new/choose). For a quality
+Use the [issue templates](https://github.com/ruwadgroup/sukoon/issues/new/choose). For a quality
 problem, attach (or describe) a short clip and tell us: which tool (extension or file separation),
 platform, and hardware.
 

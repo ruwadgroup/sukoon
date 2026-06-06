@@ -38,7 +38,7 @@ fn print_progress(p: Progress) {
     let msg = match p {
         Progress::Extract => "extracting audio…".to_string(),
         Progress::Separate { chunk, total } => {
-            let pct = if total > 0 { chunk * 100 / total } else { 0 };
+            let pct = (chunk * 100).checked_div(total).unwrap_or(0);
             format!("separating… {pct:>3}% ({chunk}/{total})")
         }
         Progress::Encode => "encoding…".to_string(),

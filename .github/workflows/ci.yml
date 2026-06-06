@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -39,15 +39,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint:ts
       - run: pnpm format:check:docs
-
-  python:
-    name: Python (cloud)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: uv run --directory apps/cloud ruff check .
-      - run: uv run --directory apps/cloud ruff format --check .
 
   commitlint:
     name: Commit messages

@@ -1,12 +1,14 @@
 <div align="center">
 
+<img src="./assets/sukoon_logo_transparent_4k.png" alt="Sukoon logo" width="160" />
+
 # Sukoon · سكون
 
 **A privacy-first, open-source media filter that removes background music while keeping speech clear.**
 **On-device by default. Creator-friendly. Halal-aware.**
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![CI](https://github.com/tamimbinhakim/sukoon/actions/workflows/ci.yml/badge.svg)](https://github.com/tamimbinhakim/sukoon/actions/workflows/ci.yml)
+[![CI](https://github.com/ruwadgroup/sukoon/actions/workflows/ci.yml/badge.svg)](https://github.com/ruwadgroup/sukoon/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/core-rust-orange.svg?logo=rust&logoColor=white)](./packages/core)
 [![pnpm](https://img.shields.io/badge/pnpm-monorepo-f69220.svg?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![Conventional Commits](https://img.shields.io/badge/conventional_commits-1.0.0-fa6673.svg)](https://www.conventionalcommits.org)
@@ -78,7 +80,7 @@ Mobile shells (Android/iOS, on-device separation) are tracked in the [ROADMAP](.
 
 ```bash
 # Clone and build the core + CLI with real inference
-git clone https://github.com/tamimbinhakim/sukoon.git
+git clone https://github.com/ruwadgroup/sukoon.git
 cd sukoon
 cargo build --release -p sukoon-cli --features onnx
 
@@ -90,6 +92,16 @@ cargo build --release -p sukoon-cli --features onnx
 ```
 
 Full setup — including FFmpeg, model downloads, and the JS workspaces — is in [docs/start/installation.md](./docs/start/installation.md).
+
+## Install the browser extension
+
+The extension isn't on the Chrome Web Store yet. To run it now — **Chrome, Edge, or Brave 124+**, about a minute:
+
+1. **Get the files:** download **`sukoon-extension.zip`** from the [latest release](https://github.com/ruwadgroup/sukoon/releases/latest) and unzip it — or build it from source (`pnpm --filter @sukoon/extension build:all` → use `apps/extension/dist`).
+2. Open `chrome://extensions`, enable **Developer mode** (top-right), click **Load unpacked**, and select the folder.
+3. Pin **Sukoon — Music Remover**, open YouTube (or Facebook / Instagram / X / any HTML5 video), and toggle it on.
+
+Everything runs on-device — nothing is uploaded. Full steps, browser support, and updating: **[apps/extension/README.md](./apps/extension/README.md#install)**.
 
 ## Status
 
