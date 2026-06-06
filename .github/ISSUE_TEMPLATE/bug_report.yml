@@ -1,25 +1,31 @@
 name: Bug report
-description: Something is broken or behaving unexpectedly.
+description: Something is broken or not working the way you expect.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      value: Thanks for the report. For **separation-quality** problems, the model-eval template is a better fit.
+      value: |
+        Thanks for the report! If the issue is that **music wasn't fully removed** or **a voice sounded
+        distorted**, the "Music-removal quality" form is a better fit.
   - type: dropdown
-    id: component
+    id: where
     attributes:
-      label: Component
+      label: Where did this happen?
+      description: Pick the part of Sukoon you were using. Not sure? Choose "Not sure".
       options:
-        - core
-        - cli
-        - extension
-        - desktop
-        - mobile
-        - web
-        - cloud
-        - docs
+        - Browser extension (Chrome / Edge / Brave)
+        - Command-line tool (the `sukoon` command)
+        - Desktop app
+        - Website
+        - Documentation
+        - Not sure
     validations:
       required: true
+  - type: input
+    id: site
+    attributes:
+      label: Which website? (browser extension only)
+      placeholder: "YouTube, Instagram, Facebook, X, …"
   - type: textarea
     id: what-happened
     attributes:
@@ -30,26 +36,24 @@ body:
   - type: textarea
     id: repro
     attributes:
-      label: Steps to reproduce
+      label: How can we reproduce it?
       placeholder: |
-        1. Run `sukoon clean ...`
-        2. ...
+        1. Opened a YouTube video
+        2. Turned Sukoon on
+        3. …
     validations:
       required: true
   - type: input
-    id: engine
-    attributes:
-      label: Engine
-      placeholder: deepfilternet / bandit / demucs
-  - type: input
     id: env
     attributes:
-      label: OS, hardware, version
-      placeholder: "Windows 11, 8 GB RAM, no GPU, sukoon 0.1.0-alpha"
+      label: Your setup
+      description: Browser + version for the extension, or your OS + Sukoon version for the apps.
+      placeholder: "Chrome 124 on Windows 11   ·   macOS 14, sukoon 0.1.0-alpha"
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
-      label: Logs
+      label: Screenshots or console logs (optional)
+      description: "For the extension, errors show under: right-click → Inspect → Console."
       render: shell

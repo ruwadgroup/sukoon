@@ -1,50 +1,50 @@
-name: Separation-quality report
-description: Report where music removal under/over-performed on real content.
+name: Music-removal quality report
+description: Tell us where music removal left too much, removed too much, or sounded off.
 labels: ["eval", "quality"]
 body:
   - type: markdown
     attributes:
       value: |
-        These reports are the single most valuable input to Sukoon. Be specific and, if you can,
-        attach a short clip (or a public link + timestamps). See the
-        [model-eval guide](../../docs/contributing/model-eval.md).
+        These reports are the **most valuable** thing you can send us. Be specific, and if you can,
+        attach a short clip — or a public link with timestamps.
   - type: dropdown
-    id: engine
+    id: where
     attributes:
-      label: Engine used
+      label: Where did you use Sukoon?
+      description: This tells us which engine was running — you don't need to know its name.
       options:
-        - "Fast (DeepFilterNet)"
-        - "HQ (BandIt Plus)"
-        - "Fallback (Demucs mdx_q)"
-    validations:
-      required: true
-  - type: dropdown
-    id: kind
-    attributes:
-      label: Problem kind
-      options:
-        - Music left in (under-removal)
-        - Speech damaged / muffled (over-removal)
-        - Artifacts / clicks / musical noise
-        - Nasheed / vocal-music edge case
-        - A/V sync drift
+        - Browser extension (real-time, on a website)
+        - Command-line tool or desktop app (cleaning a saved file)
     validations:
       required: true
   - type: input
     id: content
     attributes:
-      label: Content type
-      placeholder: "vlog / lecture / nasheed / podcast / documentary"
+      label: What were you listening to?
+      placeholder: "vlog · lecture · nasheed · podcast · documentary · news"
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What went wrong?
+      options:
+        - Music was still audible (not removed enough)
+        - The voice sounded damaged, muffled, or robotic
+        - Clicks, warble, or an "underwater" sound
+        - A sung vocal / nasheed was affected
+        - Audio and video were out of sync
     validations:
       required: true
   - type: textarea
     id: details
     attributes:
-      label: What you heard
-      description: Timestamps, what was wrong, and what you expected.
+      label: What did you hear?
+      description: Timestamps, what was wrong, and what you expected to hear instead.
     validations:
       required: true
   - type: input
     id: env
     attributes:
-      label: Platform / hardware
+      label: Your setup (optional)
+      placeholder: "Chrome on Windows 11   ·   macOS, sukoon 0.1.0-alpha"
