@@ -22,7 +22,7 @@ tracing.workspace = true
 # Inference backend (ONNX Runtime). Optional so the crate builds without it for
 # pipeline/registry development and CI on platforms without ORT.
 ort = { version = "2.0.0-rc.10", optional = true }
-ndarray = { version = "0.16", optional = true }
+ndarray = { version = "0.17", optional = true }
 # STFT/ISTFT for the MDX-Net front-end (real-valued FFT).
 realfft = { version = "3", optional = true }
 # Weight download (small, rustls) for fetching model files on first use.
