@@ -74,14 +74,14 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            asset: sukoon-linux-x86_64
             bin: sukoon
+            archive: sukoon-cli-linux-x86_64.tar.gz
           - os: macos-latest
-            asset: sukoon-macos-arm64
             bin: sukoon
+            archive: sukoon-cli-macos-arm64.tar.gz
           - os: windows-latest
-            asset: sukoon-windows-x86_64.exe
             bin: sukoon.exe
+            archive: sukoon-cli-windows-x86_64.zip
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -91,17 +91,24 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build CLI (with ONNX engine)
         run: cargo build --release -p sukoon-cli --features onnx
-      - name: Stage binary
+      - name: Package CLI archive (binary + LICENSE)
         shell: bash
         run: |
-          mkdir -p dist
-          cp "target/release/${{ matrix.bin }}" "dist/${{ matrix.asset }}"
+          mkdir -p stage
+          cp "target/release/${{ matrix.bin }}" "stage/${{ matrix.bin }}"
+          cp LICENSE stage/ 2>/dev/null || true
+          cd stage
+          if [[ "${{ matrix.archive }}" == *.zip ]]; then
+            7z a "../${{ matrix.archive }}" ./* >/dev/null
+          else
+            tar -czf "../${{ matrix.archive }}" ./*
+          fi
       - name: Upload to release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-        run: gh release upload "$TAG" "dist/${{ matrix.asset }}" --repo "$REPO" --clobber
+        run: gh release upload "$TAG" "${{ matrix.archive }}" --repo "$REPO" --clobber
 
   desktop:
     name: Desktop (${{ matrix.os }})
@@ -135,6 +142,18 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # Without the secrets below the app is **ad-hoc signed** (tauri.conf
+          # macOS.signingIdentity "-") so it opens via right-click -> Open instead
+          # of being blocked as "damaged". To ship fully-trusted, notarized builds,
+          # add these repo secrets and uncomment — no other change needed:
+          #   APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}            # base64 .p12
+          #   APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          #   APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}  # "Developer ID Application: …"
+          #   APPLE_ID: ${{ secrets.APPLE_ID }}
+          #   APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}                  # app-specific password
+          #   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows Authenticode: set bundle.windows.certificateThumbprint in
+          # tauri.conf.json and provide the cert on the runner.
         with:
           projectPath: apps/desktop
           tagName: ${{ env.TAG }}
