@@ -22,7 +22,7 @@ Keep eval clips **local** — never commit media (it's git-ignored).
 
 ## How to report a quality problem
 
-Use the [separation-quality issue template](https://github.com/tamimbinhakim/sukoon/issues/new?template=model_eval.yml).
+Use the [separation-quality issue template](https://github.com/ruwadgroup/sukoon/issues/new?template=model_eval.yml).
 Include:
 
 - **Tool**: browser extension (DeepFilterNet) or file separator (MDX-Net / UVR fallback).

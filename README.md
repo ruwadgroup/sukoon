@@ -1,12 +1,14 @@
 <div align="center">
 
+<img src="./assets/sukoon_logo_transparent_4k.png" alt="Sukoon logo" width="160" />
+
 # Sukoon · سكون
 
 **A privacy-first, open-source media filter that removes background music while keeping speech clear.**
 **On-device by default. Creator-friendly. Halal-aware.**
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
-[![CI](https://github.com/tamimbinhakim/sukoon/actions/workflows/ci.yml/badge.svg)](https://github.com/tamimbinhakim/sukoon/actions/workflows/ci.yml)
+[![CI](https://github.com/ruwadgroup/sukoon/actions/workflows/ci.yml/badge.svg)](https://github.com/ruwadgroup/sukoon/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/core-rust-orange.svg?logo=rust&logoColor=white)](./packages/core)
 [![pnpm](https://img.shields.io/badge/pnpm-monorepo-f69220.svg?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![Conventional Commits](https://img.shields.io/badge/conventional_commits-1.0.0-fa6673.svg)](https://www.conventionalcommits.org)
@@ -78,7 +80,7 @@ Mobile shells (Android/iOS, on-device separation) are tracked in the [ROADMAP](.
 
 ```bash
 # Clone and build the core + CLI with real inference
-git clone https://github.com/tamimbinhakim/sukoon.git
+git clone https://github.com/ruwadgroup/sukoon.git
 cd sukoon
 cargo build --release -p sukoon-cli --features onnx
 
