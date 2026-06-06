@@ -82,11 +82,11 @@ impl AudioBuffer {
         let mut pos = 0usize;
         while pos < frames {
             let need = resampler.input_frames_next();
-            for ch in 0..channels {
-                if inbuf[ch].len() != need {
-                    inbuf[ch].resize(need, 0.0);
+            for (ch, inbuf_ch) in inbuf.iter_mut().enumerate() {
+                if inbuf_ch.len() != need {
+                    inbuf_ch.resize(need, 0.0);
                 }
-                for (i, slot) in inbuf[ch].iter_mut().enumerate() {
+                for (i, slot) in inbuf_ch.iter_mut().enumerate() {
                     *slot = self.channels[ch].get(pos + i).copied().unwrap_or(0.0);
                 }
             }

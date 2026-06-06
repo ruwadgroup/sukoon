@@ -210,6 +210,7 @@ pub trait Engine: Send + Sync {
     }
 
     /// Run separation and deliver the speech stem as planar `f32` blocks.
+    #[allow(clippy::type_complexity)]
     fn separate_into(
         &self,
         input: &AudioBuffer,
