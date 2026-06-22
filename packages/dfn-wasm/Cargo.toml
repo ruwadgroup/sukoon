@@ -27,7 +27,7 @@ ndarray = "0.15" # match deep_filter's ndarray so ArrayView2 types unify
 # resolves to a newer 0.21.x with breaking API changes (`symbol_table` → `symbols`, etc.) that don't
 # compile. These are direct-but-unused here purely to force the resolver to 0.21.4 graph-wide.
 tract-core = "=0.21.4"
-tract-onnx = "=0.21.4"
+tract-onnx = "=0.23.3"
 tract-pulse = "=0.21.4"
 tract-hir = "=0.21.4"
 # Browser RNG backend, in case a transitive dep pulls getrandom on wasm32.
