@@ -61,6 +61,9 @@ cuda = ["onnx", "ort/cuda"]
 # The real DeepFilterNet Fast engine: `deep_filter` DSP + the three DFN3 ONNX graphs run via ORT.
 # Implies `onnx` (needs the ORT runtime + accelerated session builder). Weights download on first use.
 dfn = ["onnx", "dep:deep_filter", "dep:flate2", "dep:tar"]
+# Realtime streaming separation (`stream::RealtimeSeparator`): push live PCM in, pull cleaned PCM
+# out against any block-capable engine. Used by the desktop companion's live bridge.
+stream = []
 
 # Per-platform ORT execution providers, so inference offloads to the GPU/accelerator. These are
 # additive with the base `ort` dep above and only pulled in when building for that target, so they

@@ -23,6 +23,7 @@
 //!
 //! - [`engine`] — the [`Engine`] trait and its implementations (DeepFilterNet, MDX-Net, Demucs).
 //! - [`pipeline`] — orchestration: decode → separate → remux, with chunking and caching.
+//! - `stream` — realtime streaming separation for live sources (feature `stream`).
 //! - [`audio`] — WAV decode/encode between [`AudioBuffer`] and disk.
 //! - [`ffmpeg`] — thin wrapper around the FFmpeg binary for audio extraction and remuxing.
 //! - [`registry`] — the model registry: URLs, checksums, and **licenses** per model.
@@ -36,6 +37,8 @@ pub mod engine;
 pub mod ffmpeg;
 pub mod pipeline;
 pub mod registry;
+#[cfg(feature = "stream")]
+pub mod stream;
 
 pub use engine::{Engine, EngineKind, Separation, Stem};
 pub use pipeline::{Pipeline, PipelineOptions, Progress, SeparationMode};
