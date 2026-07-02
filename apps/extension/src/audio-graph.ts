@@ -1,9 +1,16 @@
 /**
  * Web Audio routing for Sukoon's real-time engine.
  *
- * One engine: **DeepFilterNet**, run in the page's audio thread by the `dfn-processor` AudioWorklet —
- * real-time (~10 ms), in sync, on-device, no download. It taps the playing media element directly, so
- * it works on every stream (adaptive, muxed, ads) and never needs to read ahead or hold the video.
+ * The base engine is **DeepFilterNet**, run in the page's audio thread by the `dfn-processor`
+ * AudioWorklet — real-time (~10 ms), in sync, on-device, no download. It taps the playing media
+ * element directly, so it works on every stream (adaptive, muxed, ads) and never needs to read
+ * ahead or hold the video. Capable devices process stereo (per-channel enhancement); low-end
+ * devices down-mix to mono.
+ *
+ * When the user enables **HQ Live** and the desktop companion is paired, the same worklet switches
+ * into its delay-line mode and [`HqLive`] streams the audio through the desktop's MDX separator
+ * while delaying the picture to match — desktop-grade quality a few seconds behind live, with the
+ * DFN output as the always-on fallback bed (see hq-live.ts).
  *
  * The claimed media element routes: source → DFN worklet → loudness tail → destination. When removal
  * is off (or unavailable) the source routes straight to the destination (passthrough), so YouTube
@@ -12,6 +19,8 @@
  */
 
 import { createLoudnessStage } from "./loudness.js";
+import { HqLive } from "./hq-live.js";
+import { requestPairingToken } from "./companion-client.js";
 import { debugEvent, registerDebugSnapshot } from "./debug.js";
 
 /**
@@ -54,6 +63,14 @@ export class AudioGraph {
   private readonly sources = new Map<HTMLMediaElement, MediaElementAudioSourceNode>();
   private readonly mediaCleanups = new Map<HTMLMediaElement, () => void>();
   private enabled = false;
+  private workletNode: AudioWorkletNode | null = null;
+  private hqLive: HqLive | null = null;
+  private hqDesired = false;
+  private hqEngaging = false;
+  private hqLastAttempt = 0;
+  private hqRetryTimer = 0;
+  private adShowing = false;
+  private noiseMode = "off";
   private ready = false;
   private preparing: { generation: number; promise: Promise<void> } | null = null;
   private buildGeneration = 0;
@@ -68,6 +85,7 @@ export class AudioGraph {
       enabled: this.enabled,
       ready: this.ready,
       contextState: this.context?.state ?? "none",
+      hq: { desired: this.hqDesired, engaged: this.hqLive !== null, adShowing: this.adShowing },
       claimedSources: this.sources.size,
       current: this.current
         ? {
@@ -112,9 +130,48 @@ export class AudioGraph {
     this.enabled = false;
     debugEvent("graph", "disable", undefined, "info");
     this.disarmGestureRetry();
+    this.disengageHq("disabled");
     this.chain?.setBypass(true);
     this.routeAllToPassthrough();
     this.emit("off");
+  }
+
+  /**
+   * Desired HQ Live state (from prefs). Pairing with the desktop companion is automatic; engages
+   * against the current chain when possible, and `false` drops back to Instant mode immediately.
+   */
+  setHqLive(enabled: boolean): void {
+    this.hqDesired = enabled;
+    if (!enabled) {
+      this.disengageHq("preference off");
+      return;
+    }
+    this.hqLastAttempt = 0;
+    void this.maybeEngageHq();
+  }
+
+  /** Comfort-noise bed color ("off" disables); level always adapts inside the worklet. */
+  setNoiseMode(mode: string): void {
+    this.noiseMode = mode;
+    debugEvent("graph", "noise", { mode }, "info");
+    this.workletNode?.port.postMessage({ type: "noise", value: mode });
+  }
+
+  /**
+   * Ads never use HQ: the separator's compute is for content, and an ad break is a stream
+   * discontinuity anyway. While an ad shows, HQ Live is suspended (live video, instant engine);
+   * it re-engages when the content resumes.
+   */
+  setAdShowing(showing: boolean): void {
+    if (showing === this.adShowing) return;
+    this.adShowing = showing;
+    debugEvent("graph", "ad", { showing }, "info");
+    if (showing) {
+      this.disengageHq("ad");
+    } else if (this.hqDesired) {
+      this.hqLastAttempt = 0;
+      void this.maybeEngageHq();
+    }
   }
 
   /** Pre-load the engine without starting audio, so the first enable is instant. */
@@ -131,6 +188,7 @@ export class AudioGraph {
   /** Tear down the graph and free the audio context. */
   detach(): void {
     debugEvent("graph", "detach", undefined, "info");
+    this.disengageHq("detach");
     this.invalidateBuild();
     this.chain?.dispose();
     this.chain = null;
@@ -242,33 +300,116 @@ export class AudioGraph {
     else this.routeAllToPassthrough();
     if (!this.enabled) this.emit("off");
     else this.emit(this.chain?.isReady() ? "active" : "buffering");
+    if (this.enabled) void this.maybeEngageHq();
   }
 
-  /** Flush latency buffers on player discontinuities so resume/seek never drains stale audio. */
+  /** Engage HQ Live against the current chain if desired, possible, and not already up. */
+  private async maybeEngageHq(): Promise<void> {
+    if (!this.hqDesired || this.adShowing || this.hqLive || this.hqEngaging) return;
+    if (!this.enabled || !this.context || !this.workletNode) return;
+    const video = this.current;
+    if (!(video instanceof HTMLVideoElement) || video.readyState < 2) return;
+    // Failed attempts back off so a missing companion doesn't hammer connect on every event.
+    const now = Date.now();
+    if (now - this.hqLastAttempt < 30_000) return;
+    this.hqLastAttempt = now;
+    this.hqEngaging = true;
+    try {
+      const token = await requestPairingToken();
+      if (!token) throw new Error("desktop app not reachable");
+      this.hqLive = await HqLive.engage({
+        context: this.context,
+        node: this.workletNode,
+        video,
+        token,
+        onBuffering: (buffering) => {
+          // Note: fires during engage too, before `this.hqLive` is assigned.
+          if (this.enabled) this.emit(buffering ? "buffering" : "active");
+        },
+        onDown: (reason) => {
+          debugEvent("graph", "hq:down", { reason }, "warn");
+          this.hqLive = null;
+          if (this.enabled) this.emit(this.chain?.isReady() ? "active" : "buffering");
+        },
+      });
+      debugEvent("graph", "hq:engaged", undefined, "info");
+    } catch (error) {
+      debugEvent("graph", "hq:engage-failed", { error: String(error) }, "info");
+      // Keep trying in the background (e.g. the desktop app launches after the page did).
+      if (!this.hqRetryTimer) {
+        this.hqRetryTimer = window.setTimeout(() => {
+          this.hqRetryTimer = 0;
+          void this.maybeEngageHq();
+        }, 31_000);
+      }
+    } finally {
+      this.hqEngaging = false;
+    }
+  }
+
+  private disengageHq(reason: string): void {
+    if (this.hqRetryTimer) {
+      clearTimeout(this.hqRetryTimer);
+      this.hqRetryTimer = 0;
+    }
+    if (!this.hqLive) return;
+    debugEvent("graph", "hq:disengage", { reason }, "info");
+    this.hqLive.disengage();
+    this.hqLive = null;
+  }
+
+  /**
+   * Player discontinuities. Instant mode flushes its small latency buffers so resume/seek never
+   * drains stale audio. HQ Live instead *freezes* across pauses (its delay line must survive them)
+   * and only flushes on real discontinuities (seeks/stalls/src changes); a pause at the very end of
+   * the video is left running so the buffered tail plays out.
+   */
   private watchMediaLifecycle(media: HTMLMediaElement): void {
     if (this.mediaCleanups.has(media)) return;
-    const reset = (event: Event) => {
-      this.chain?.reset();
+    const log = (event: Event) =>
       debugEvent("media", event.type, {
         currentTime: Math.round(media.currentTime * 1000) / 1000,
       });
+    const onPause = (event: Event) => {
+      log(event);
+      if (this.hqLive) {
+        if (!media.ended) this.hqLive.hold(true);
+      } else {
+        this.chain?.reset();
+      }
+    };
+    const flush = (event: Event) => {
+      log(event);
+      if (this.hqLive) {
+        this.hqLive.flush();
+        // Re-derive the hold from the element so a missed pause/playing pair can't leave the
+        // delay line frozen (or draining) forever.
+        this.hqLive.hold(media.paused && !media.ended);
+      } else {
+        this.chain?.reset();
+      }
+    };
+    const onSeeked = (event: Event) => {
+      log(event);
+      if (!this.hqLive) this.chain?.reset();
     };
     const restart = () => {
       debugEvent("media", "playing", { currentTime: Math.round(media.currentTime * 1000) / 1000 });
+      this.hqLive?.hold(false);
       if (this.enabled) void this.start();
     };
-    media.addEventListener("pause", reset);
-    media.addEventListener("seeking", reset);
-    media.addEventListener("seeked", reset);
-    media.addEventListener("stalled", reset);
-    media.addEventListener("emptied", reset);
+    media.addEventListener("pause", onPause);
+    media.addEventListener("seeking", flush);
+    media.addEventListener("seeked", onSeeked);
+    media.addEventListener("stalled", flush);
+    media.addEventListener("emptied", flush);
     media.addEventListener("playing", restart);
     this.mediaCleanups.set(media, () => {
-      media.removeEventListener("pause", reset);
-      media.removeEventListener("seeking", reset);
-      media.removeEventListener("seeked", reset);
-      media.removeEventListener("stalled", reset);
-      media.removeEventListener("emptied", reset);
+      media.removeEventListener("pause", onPause);
+      media.removeEventListener("seeking", flush);
+      media.removeEventListener("seeked", onSeeked);
+      media.removeEventListener("stalled", flush);
+      media.removeEventListener("emptied", flush);
       media.removeEventListener("playing", restart);
     });
   }
@@ -349,15 +490,19 @@ export class AudioGraph {
     await this.ensureWorkletModule(ctx);
     const module = await compileWasm(runtimeUrl(WASM_URL));
     const primeMs = this.device?.class === "low" ? 240 : 120;
+    // Stereo enhancement costs ~2x DFN compute; low-end devices down-mix to mono instead.
+    const channels = this.device?.class === "low" ? 1 : 2;
     const node = new AudioWorkletNode(ctx, "dfn-processor", {
       numberOfInputs: 1,
       numberOfOutputs: 1,
       outputChannelCount: [2],
-      processorOptions: { module, attenLimDb: DFN_ATTEN_LIM_DB, primeMs },
+      processorOptions: { module, attenLimDb: DFN_ATTEN_LIM_DB, primeMs, channels },
     });
     await waitForReady(node.port);
+    if (this.noiseMode !== "off") node.port.postMessage({ type: "noise", value: this.noiseMode });
     const loudness = createLoudnessStage(ctx, node);
     loudness.output.connect(ctx.destination);
+    this.workletNode = node;
     return {
       head: node,
       isReady: () => true,
@@ -367,6 +512,7 @@ export class AudioGraph {
       },
       reset: () => node.port.postMessage({ type: "reset" }),
       dispose: () => {
+        if (this.workletNode === node) this.workletNode = null;
         try {
           node.disconnect();
         } catch {
@@ -386,6 +532,7 @@ export class AudioGraph {
 
   /** On any engine/runtime failure, preserve YouTube audio by routing claimed media straight out. */
   private failOpen(): void {
+    this.disengageHq("fail-open");
     this.invalidateBuild();
     const failed = this.chain;
     this.chain = null;

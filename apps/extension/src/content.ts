@@ -3,7 +3,11 @@ import { buttonStore } from "./button-store.js";
 import { pickAdapter } from "./adapters/index.js";
 import {
   getDefaults,
+  getHqSettings,
+  getNoiseMode,
   getVideoPrefs,
+  HQ_STORAGE_KEYS,
+  NOISE_STORAGE_KEY,
   prefsFromChange,
   setDefaults,
   setVideoPrefs,
@@ -104,7 +108,27 @@ document.addEventListener(
   true,
 );
 
+async function applyHqSettings(): Promise<void> {
+  const hq = await getHqSettings();
+  debugEvent("prefs", "hq", { enabled: hq.enabled }, "info");
+  graph.setHqLive(hq.enabled);
+}
+void applyHqSettings();
+
+async function applyNoiseMode(): Promise<void> {
+  graph.setNoiseMode(await getNoiseMode());
+}
+void applyNoiseMode();
+
+adapter.observeAds?.((showing) => graph.setAdShowing(showing));
+
 chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "sync" && HQ_STORAGE_KEYS.some((key) => key in changes)) {
+    void applyHqSettings();
+  }
+  if (area === "sync" && NOISE_STORAGE_KEY in changes) {
+    void applyNoiseMode();
+  }
   if (area !== "local" || !currentKey) return;
   const change = changes[videoKey(currentKey)];
   if (!change) return;

@@ -14,12 +14,14 @@ const dfnPkg = resolve(ext, "../../packages/dfn-wasm/pkg");
 
 const polyfills = readFileSync(resolve(ext, "worklet/polyfills.js"), "utf8");
 const glue = readFileSync(resolve(dfnPkg, "dfn_wasm.js"), "utf8");
+const noise = readFileSync(resolve(ext, "worklet/noise.js"), "utf8");
 const dfn = readFileSync(resolve(ext, "worklet/processor.js"), "utf8");
 
 mkdirSync(dist, { recursive: true });
 writeFileSync(
   resolve(dist, "worklet.js"),
   `${polyfills}\n;/* --- wasm-bindgen glue (DeepFilterNet) --- */\n${glue}\n` +
+    `;/* --- Sukoon comfort-noise engine --- */\n${noise}\n` +
     `;/* --- Sukoon DFN worklet --- */\n${dfn}`,
 );
 
