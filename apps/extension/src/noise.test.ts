@@ -60,22 +60,22 @@ describe("NoiseEngine", () => {
     expect(rmsDb(out)).toBeLessThan(-90);
   });
 
-  it("levels the bed near the input's noise floor", () => {
+  it("levels the bed ~8 dB under the input's noise floor", () => {
     const e = new NoiseEngine(SR);
     e.setMode("smart");
-    run(e, 8, noisyInput(-55)); // converge
+    run(e, 10, noisyInput(-55)); // converge (sliding-min window is ~6 s)
     const out = run(e, 4, noisyInput(-55));
     const level = rmsDb(out, out.length / 2);
-    expect(level).toBeGreaterThan(-64);
-    expect(level).toBeLessThan(-46);
+    expect(level).toBeGreaterThan(-74);
+    expect(level).toBeLessThan(-57);
   });
 
   it("never exceeds the level cap on loud content", () => {
     const e = new NoiseEngine(SR);
     e.setMode("white");
-    run(e, 8, noisyInput(-10));
+    run(e, 10, noisyInput(-10));
     const out = run(e, 4, noisyInput(-10));
-    expect(rmsDb(out, out.length / 2)).toBeLessThan(-36);
+    expect(rmsDb(out, out.length / 2)).toBeLessThan(-45);
   });
 
   it("gates off on silent input", () => {

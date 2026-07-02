@@ -7,9 +7,11 @@
  * noise). The engine is deliberately knob-free — everything adapts:
  *
  * - **Level is always automatic.** A minimum-statistics tracker follows the input's noise floor
- *   (fast to fall, ~20 s to rise so speech and music never inflate it), and the noise sits at that
- *   floor, clamped to [-72, -38] dBFS. When the input goes truly silent (paused player, dead
- *   stream) the bed fades out entirely — noise must never outlive the content it's dressing.
+ *   (the minimum short-term power over a ~6 s sliding window, so continuous speech/music can never
+ *   inflate it), and the bed sits **8 dB below** that floor — room tone dresses the gaps, it never
+ *   competes with the content's own noise — clamped to [-72, -48] dBFS. When the input goes truly
+ *   silent (paused player, dead stream) the bed fades out entirely — noise must never outlive the
+ *   content it's dressing.
  * - **"smart" color matches the content.** The floor is tracked in three bands (one-pole
  *   crossovers at ~400 Hz and ~3 kHz), and white noise is re-shaped through the same crossovers
  *   with per-band gains that reproduce the measured spectrum — the video's own room tone,
@@ -26,7 +28,12 @@
  */
 
 const NOISE_FLOOR_MIN = 10 ** (-72 / 10); // power units (1.0 = 0 dBFS sine RMS^2-ish)
-const NOISE_FLOOR_MAX = 10 ** (-38 / 10);
+const NOISE_FLOOR_MAX = 10 ** (-48 / 10);
+/** The bed sits this far below the measured floor (power factor; -8 dB). */
+const BED_OFFSET = 10 ** (-8 / 10);
+/** Minimum-statistics window: minima of `MIN_SUBWINDOWS` sub-windows of `SUBWINDOW_S` seconds. */
+const SUBWINDOW_S = 0.5;
+const MIN_SUBWINDOWS = 12;
 /** Input below this (broadband, smoothed) counts as silence and gates the bed off. */
 const SILENCE_GATE = 10 ** (-70 / 10);
 /** How long the input must stay silent before the bed fades out (seconds). */
@@ -76,6 +83,13 @@ class NoiseEngine {
     this.inLp2 = 0;
     this.pow = [0, 0, 0]; // smoothed band powers of the input (~50 ms)
     this.floor = [NOISE_FLOOR_MIN, NOISE_FLOOR_MIN, NOISE_FLOOR_MIN]; // per-band noise floor
+    // Sliding-minimum machinery: the running minimum of the current sub-window, and a ring of the
+    // last MIN_SUBWINDOWS sub-window minima. The floor is the minimum over the whole ring, so it
+    // tracks the quietest recent moment and is immune to continuous loud program material.
+    this.winMin = [Infinity, Infinity, Infinity];
+    this.minRing = Array.from({ length: MIN_SUBWINDOWS }, () => [Infinity, Infinity, Infinity]);
+    this.ringIdx = 0;
+    this.winSamples = 0;
     this.noisePow = [1e-3, 1e-3, 1e-3]; // measured band powers of the *generated* noise
     this.gain = [0, 0, 0]; // smoothed per-band synthesis gains
     this.master = 0; // smoothed 0..1 fade (mode switches, silence gate)
@@ -83,8 +97,7 @@ class NoiseEngine {
 
     const at = (tau) => 1 - Math.exp(-1 / (tau * sampleRate));
     this.aPow = at(0.05); // band power smoothing
-    this.aFall = at(0.2); // floor falls quickly toward quiet moments...
-    this.aRise = at(20); // ...and rises very slowly, so speech/music never lift it
+    this.aFloor = at(1.5); // floor glide toward the sliding minimum
     this.aGain = at(0.1); // gain glide
     this.aMaster = at(0.08); // master fade
   }
@@ -108,11 +121,24 @@ class NoiseEngine {
       this.pow[1] += this.aPow * (mid * mid - this.pow[1]);
       this.pow[2] += this.aPow * (high * high - this.pow[2]);
     }
+    // Advance the sliding minimum, then glide the floor toward it (per-sample coefficient scaled
+    // by n; valid for these small taus).
     for (let b = 0; b < 3; b++) {
-      const p = this.pow[b];
-      // Per-sample coefficients applied once per block: scale by n (valid for these small taus).
-      const a = Math.min(1, (p < this.floor[b] ? this.aFall : this.aRise) * n);
-      this.floor[b] += a * (p - this.floor[b]);
+      if (this.pow[b] < this.winMin[b]) this.winMin[b] = this.pow[b];
+    }
+    this.winSamples += n;
+    if (this.winSamples >= SUBWINDOW_S * this.sampleRate) {
+      this.minRing[this.ringIdx] = this.winMin;
+      this.ringIdx = (this.ringIdx + 1) % MIN_SUBWINDOWS;
+      this.winMin = [Infinity, Infinity, Infinity];
+      this.winSamples = 0;
+    }
+    const aFloor = Math.min(1, this.aFloor * n);
+    for (let b = 0; b < 3; b++) {
+      let m = this.winMin[b];
+      for (const w of this.minRing) if (w[b] < m) m = w[b];
+      if (!Number.isFinite(m)) m = NOISE_FLOOR_MIN;
+      this.floor[b] += aFloor * (m - this.floor[b]);
       if (this.floor[b] < NOISE_FLOOR_MIN) this.floor[b] = NOISE_FLOOR_MIN;
     }
     const broadband = this.pow[0] + this.pow[1] + this.pow[2];
@@ -142,9 +168,9 @@ class NoiseEngine {
 
     // Per-band synthesis targets. "smart" reproduces the measured spectrum; fixed colors get the
     // broadband floor split evenly across bands *of that color's own spectrum* (gain equal across
-    // bands = the color's natural tilt preserved, total power = floor).
+    // bands = the color's natural tilt preserved, total power = floor - 8 dB).
     const total = Math.min(
-      Math.max(this.floor[0] + this.floor[1] + this.floor[2], NOISE_FLOOR_MIN),
+      Math.max((this.floor[0] + this.floor[1] + this.floor[2]) * BED_OFFSET, NOISE_FLOOR_MIN),
       NOISE_FLOOR_MAX,
     );
     const noiseTotal = this.noisePow[0] + this.noisePow[1] + this.noisePow[2] + 1e-12;
