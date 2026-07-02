@@ -46,7 +46,7 @@ media element ──► rVFC + VideoFrame ──► VideoEncoder ──► chunk
 
 - **Pause** freezes both delay heads (`hold`); nothing drains, nothing drifts.
   A pause at the very end of the video does _not_ hold, so the buffered tail plays out.
-- **Seek / stall / src change** flushes everything under a new epoch; the user sees the frozen frame plus a spinner while the line refills (~`D` seconds), the same cost as the initial lag.
+- **Seek / stall / src change** flushes everything under a new epoch; the user sees the frozen frame plus a dimmed overlay and spinner while the line refills (~`D` seconds), the same cost as the initial lag.
 - **Companion drops mid-play**: the delay line keeps playing the DFN bed (instant-engine quality, still in sync) and reconnects every 10 s; on reconnect the stream resumes position-offset, no rebuffer.
 - **Video pipeline failure** (WebCodecs unavailable, capture SecurityError on non-MSE cross-origin media): HQ Live tears down entirely and the graph returns to the live instant engine - never a black player.
 - **Playback rate** (0.25x-2x) just works: audio samples arrive at 48 kHz regardless of rate, the separator processes whatever it is fed, and the video renderer advances its media-time target at the element's rate.
@@ -88,7 +88,7 @@ Prereqs: desktop app running (HQ model downloaded), extension built (`pnpm --fil
 9. Toggle the extension off during HQ playback.
    Expect: immediate return to the live original (picture jumps forward `D` seconds - expected).
 10. Play a video with a pre-roll or mid-roll ad.
-    Expect: the ad plays live and instantly (real player visible, skip button usable, never blocked); after the ad, one "Enhancing…" refill and HQ resumes.
+    Expect: the ad plays live and instantly (real player visible, skip button usable, never blocked); after the ad, one "Removing Music (HQ)" refill and HQ resumes.
 11. Quit the desktop app window (not the tray).
     Expect: HQ keeps working - the companion runs in the background; only "Quit Sukoon" from the tray stops it.
 

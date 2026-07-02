@@ -331,21 +331,23 @@ export class VideoDelay {
     canvas.style.cssText =
       "position:absolute;pointer-events:none;z-index:10;background:transparent;";
     // The spinner overlay covers the same box as the canvas (the parent may not be the video's
-    // containing block, so centering against it lands off-screen on some players).
+    // containing block, so centering against it lands off-screen on some players), dimming the
+    // frozen poster frame behind it so the refill state reads as deliberate.
     const spinner = document.createElement("div");
     spinner.setAttribute("data-sukoon", "video-delay-spinner");
     spinner.style.cssText =
       "position:absolute;z-index:11;pointer-events:none;display:none;" +
-      "flex-direction:column;align-items:center;justify-content:center;gap:10px;";
+      "flex-direction:column;align-items:center;justify-content:center;gap:12px;" +
+      "background:rgba(0,0,0,.6);";
     const ring = document.createElement("div");
     ring.style.cssText =
       "width:42px;height:42px;border:3px solid rgba(255,255,255,.25);" +
       "border-top-color:rgba(255,255,255,.9);border-radius:50%;" +
       "animation:sukoon-spin 0.9s linear infinite;";
     const label = document.createElement("div");
-    label.textContent = "Enhancing…";
+    label.textContent = "Removing Music (HQ)";
     label.style.cssText =
-      "color:rgba(255,255,255,.85);font:500 13px/1 system-ui,sans-serif;" +
+      "color:rgba(255,255,255,.9);font:500 14px/1 system-ui,sans-serif;" +
       "text-shadow:0 1px 2px rgba(0,0,0,.6);";
     spinner.append(ring, label);
     ensureSpinKeyframes();
