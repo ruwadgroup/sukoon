@@ -14,6 +14,7 @@
     "./card": "./src/components/card.tsx",
     "./badge": "./src/components/badge.tsx",
     "./spinner": "./src/components/spinner.tsx",
+    "./switch": "./src/components/switch.tsx",
     "./progress-line": "./src/components/progress-line.tsx"
   },
   "scripts": {
