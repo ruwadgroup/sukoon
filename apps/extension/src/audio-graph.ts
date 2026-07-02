@@ -150,6 +150,18 @@ export class AudioGraph {
     void this.maybeEngageHq();
   }
 
+  /**
+   * The page moved to a different video (adapter media key changed). HQ Live must drop its
+   * buffered content — SPA navigations can swap the stream without any media event firing.
+   */
+  flushHq(reason: string): void {
+    if (!this.hqLive) return;
+    debugEvent("graph", "hq:flush", { reason }, "info");
+    this.hqLive.flush();
+    const media = this.current;
+    if (media) this.hqLive.hold(media.paused && !media.ended);
+  }
+
   /** Comfort-noise bed color ("off" disables); level always adapts inside the worklet. */
   setNoiseMode(mode: string): void {
     this.noiseMode = mode;

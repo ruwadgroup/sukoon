@@ -77,7 +77,9 @@ async function onVideoContext(): Promise<void> {
   if (healIfOrphaned()) return;
   const key = adapter.mediaKey();
   if (key === currentKey) return;
+  const isNavigation = currentKey !== null;
   currentKey = key;
+  if (isNavigation) graph.flushHq("video changed");
   const seq = ++contextSeq;
   const prefs = key ? await getVideoPrefs(key) : await getDefaults();
   if (seq !== contextSeq) return;

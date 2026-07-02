@@ -213,10 +213,24 @@ export class HqLive {
   };
 
   private sampleCorrelation(): void {
-    this.correlations.push({
-      ctx: this.opts.context.currentTime,
-      media: this.opts.video.currentTime,
-    });
+    const ctx = this.opts.context.currentTime;
+    const media = this.opts.video.currentTime;
+    // Discontinuity backstop: YouTube can swap videos (SPA navigation, MSE source resets) without
+    // firing the events the graph flushes on. Media time then jumps while everything else keeps
+    // flowing — the picture would freeze on the old video. If the observed media time strays far
+    // from the extrapolated one, treat it as a seek we never heard about.
+    const last = this.correlations[this.correlations.length - 1];
+    if (last && !this.opts.video.paused) {
+      const rate = this.opts.video.playbackRate || 1;
+      const expected = last.media + (ctx - last.ctx) * rate;
+      if (Math.abs(media - expected) > 3) {
+        debugEvent("hqLive", "discontinuity", { expected, media }, "warn");
+        this.flush();
+        this.opts.node.port.postMessage({ type: "hold", value: false });
+        return; // flush cleared the log; restart sampling next tick
+      }
+    }
+    this.correlations.push({ ctx, media });
     if (this.correlations.length > CORRELATION_ENTRIES) this.correlations.shift();
   }
 

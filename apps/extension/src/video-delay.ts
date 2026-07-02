@@ -182,6 +182,12 @@ export class VideoDelay {
     const h = this.video.videoHeight;
     if (!w || !h) return;
     const ts = Math.round(mediaTime * 1e6);
+    // A large backward jump means a new video/seek the owner hasn't flushed yet; dropping "old"
+    // frames forever would freeze the canvas on the previous content.
+    if (ts < this.lastEncodedTs - 1_000_000) {
+      this.flush();
+      return;
+    }
     if (ts <= this.lastEncodedTs) return;
     if (w !== this.encWidth || h !== this.encHeight) {
       void this.configurePipelines(w, h);
