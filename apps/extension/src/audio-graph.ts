@@ -67,7 +67,7 @@ export class AudioGraph {
   private hqLive: HqLive | null = null;
   private hqDesired = false;
   private hqEngaging = false;
-  private hqLastAttempt = 0;
+  private hqBackoffUntil = 0;
   private hqRetryTimer = 0;
   private adShowing = false;
   private noiseMode = "off";
@@ -146,7 +146,7 @@ export class AudioGraph {
       this.disengageHq("preference off");
       return;
     }
-    this.hqLastAttempt = 0;
+    this.hqBackoffUntil = 0;
     void this.maybeEngageHq();
   }
 
@@ -166,11 +166,15 @@ export class AudioGraph {
     if (showing === this.adShowing) return;
     this.adShowing = showing;
     debugEvent("graph", "ad", { showing }, "info");
+    // The comfort-noise bed freezes during ads: ads are loud continuous content that would drag
+    // the tracked noise floor (and thus the bed) up, and they aren't cleaned content to dress.
+    this.workletNode?.port.postMessage({ type: "ad", value: showing });
     if (showing) {
       this.disengageHq("ad");
     } else if (this.hqDesired) {
-      this.hqLastAttempt = 0;
-      void this.maybeEngageHq();
+      // Give the player a moment to swap streams back to content before engaging.
+      this.hqBackoffUntil = 0;
+      window.setTimeout(() => void this.maybeEngageHq(), 300);
     }
   }
 
@@ -309,10 +313,7 @@ export class AudioGraph {
     if (!this.enabled || !this.context || !this.workletNode) return;
     const video = this.current;
     if (!(video instanceof HTMLVideoElement) || video.readyState < 2) return;
-    // Failed attempts back off so a missing companion doesn't hammer connect on every event.
-    const now = Date.now();
-    if (now - this.hqLastAttempt < 30_000) return;
-    this.hqLastAttempt = now;
+    if (Date.now() < this.hqBackoffUntil) return;
     this.hqEngaging = true;
     try {
       const token = await requestPairingToken();
@@ -334,13 +335,17 @@ export class AudioGraph {
       });
       debugEvent("graph", "hq:engaged", undefined, "info");
     } catch (error) {
-      debugEvent("graph", "hq:engage-failed", { error: String(error) }, "info");
-      // Keep trying in the background (e.g. the desktop app launches after the page did).
+      // A missing companion backs off for real; anything else (a mid-transition player right
+      // after an ad or seek, a codec hiccup) is transient and retries quickly.
+      const transient = !String(error).includes("not reachable");
+      const backoffMs = transient ? 2_500 : 30_000;
+      this.hqBackoffUntil = Date.now() + backoffMs;
+      debugEvent("graph", "hq:engage-failed", { error: String(error), backoffMs }, "info");
       if (!this.hqRetryTimer) {
         this.hqRetryTimer = window.setTimeout(() => {
           this.hqRetryTimer = 0;
           void this.maybeEngageHq();
-        }, 31_000);
+        }, backoffMs + 500);
       }
     } finally {
       this.hqEngaging = false;
@@ -500,6 +505,7 @@ export class AudioGraph {
     });
     await waitForReady(node.port);
     if (this.noiseMode !== "off") node.port.postMessage({ type: "noise", value: this.noiseMode });
+    if (this.adShowing) node.port.postMessage({ type: "ad", value: true });
     const loudness = createLoudnessStage(ctx, node);
     loudness.output.connect(ctx.destination);
     this.workletNode = node;

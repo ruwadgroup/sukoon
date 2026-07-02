@@ -61,6 +61,7 @@ class DfnProcessor extends AudioWorkletProcessor {
     this.diagCountdown = DIAG_CALLS;
     // Comfort-noise bed over the enhanced output ("Add noise") — see worklet/noise.js.
     this.noise = new NoiseEngine(sampleRate);
+    this.adShowing = false;
 
     const opts = options.processorOptions || {};
     this.channels = opts.channels === 2 ? 2 : 1;
@@ -93,6 +94,7 @@ class DfnProcessor extends AudioWorkletProcessor {
       else if (d.type === "reset") this.resetBuffers();
       else if (d.type === "hold") this.held = !!d.value;
       else if (d.type === "noise") this.noise.setMode(d.value);
+      else if (d.type === "ad") this.adShowing = !!d.value;
       else if (d.type === "mode") this.setMode(d.value, d.delaySamples);
       else if (d.type === "hq-audio" && this.hq) this.applyHqAudio(d.startSample, d.data);
       else if (d.type === "atten" && this.denoiser && typeof d.value === "number") {
@@ -229,10 +231,14 @@ class DfnProcessor extends AudioWorkletProcessor {
     if (this.mode === "hq") this.processHq(input, output, n);
     else this.processDfn(input, output, n);
 
-    // The bed dresses only *processed* audio (never bypass/passthrough, which returned above);
-    // it observes the raw input's noise floor and mixes over the enhanced output.
-    this.noise.observeInput(input[0], input[1] || null, n);
-    this.noise.addTo(output[0], output[1] || output[0], n);
+    // The bed dresses only *processed* audio (never bypass/passthrough, which returned above).
+    // During ads it freezes outright: no bed (ads aren't cleaned content to dress) and no floor
+    // observation (a loud ad would drag the tracked floor - and thus the bed - up for the content
+    // that follows).
+    if (!this.adShowing) {
+      this.noise.observeInput(input[0], input[1] || null, n);
+      this.noise.addTo(output[0], output[1] || output[0], n);
+    }
     return true;
   }
 
