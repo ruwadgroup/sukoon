@@ -1,6 +1,6 @@
 {
   "name": "@sukoon/desktop",
-  "version": "0.1.0-alpha.0",
+  "version": "0.2.0-alpha.0",
   "private": true,
   "description": "Sukoon desktop app (Tauri + Next.js) — drag-and-drop music removal; also the browser extension's local companion.",
   "license": "Apache-2.0",

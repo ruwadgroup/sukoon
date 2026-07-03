@@ -1,6 +1,6 @@
 {
   "name": "@sukoon/dfn-wasm",
-  "version": "0.1.0-alpha.0",
+  "version": "0.2.0-alpha.0",
   "private": true,
   "description": "Sukoon's in-page Fast engine — DeepFilterNet's streaming tract runtime + embedded DFN3 model, compiled to WebAssembly for real-time, on-device music removal in the browser.",
   "license": "Apache-2.0",

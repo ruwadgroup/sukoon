@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sukoon — Music Remover",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Reduces instrumental background music while keeping speech and recitation clear — on YouTube, Facebook, Instagram, X, and any HTML5 video. On-device. Never blocks, skips, or mutes ads.",
   "minimum_chrome_version": "124",
   "icons": {

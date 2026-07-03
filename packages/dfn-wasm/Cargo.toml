@@ -5,7 +5,7 @@
 
 [package]
 name = "dfn-wasm"
-version = "0.1.0"
+version = "0.2.0-alpha.0"
 edition = "2021"
 publish = false
 description = "Sukoon's in-page Fast engine: a wasm-bindgen wrapper over DeepFilterNet's streaming DfTract runtime (real-time speech enhancement / music removal)."
