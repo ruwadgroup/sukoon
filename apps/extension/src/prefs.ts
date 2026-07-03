@@ -55,3 +55,51 @@ export async function setDefaults(partial: Partial<Prefs>): Promise<void> {
 export function prefsFromChange(value: unknown): Prefs {
   return normalize(value);
 }
+
+/**
+ * HQ Live setting — global (not per-video): whether to prefer the desktop companion's HQ engine.
+ * Pairing with the desktop app is automatic (the background worker fetches the token from the
+ * companion's `/pairing` endpoint), so this is a single `hqLive` flag in `chrome.storage.sync`.
+ */
+export interface HqSettings {
+  enabled: boolean;
+}
+
+export const HQ_STORAGE_KEYS = ["hqLive"] as const;
+
+export async function getHqSettings(): Promise<HqSettings> {
+  try {
+    const { hqLive } = await chrome.storage.sync.get("hqLive");
+    return { enabled: hqLive === true };
+  } catch {
+    return { enabled: false };
+  }
+}
+
+export async function setHqSettings(partial: Partial<HqSettings>): Promise<void> {
+  if (partial.enabled !== undefined) await chrome.storage.sync.set({ hqLive: partial.enabled });
+}
+
+/**
+ * Comfort-noise ("Add noise") setting — global. The bed's level always adapts to the content;
+ * the mode only picks the color: `smart` matches the content's own noise-floor spectrum, the
+ * classic colors force a shape. Stored under `noiseMode` in `chrome.storage.sync`.
+ */
+export type NoiseMode = "off" | "smart" | "white" | "pink" | "brown";
+
+export const NOISE_STORAGE_KEY = "noiseMode";
+
+const NOISE_MODES: readonly NoiseMode[] = ["off", "smart", "white", "pink", "brown"];
+
+export async function getNoiseMode(): Promise<NoiseMode> {
+  try {
+    const { noiseMode } = await chrome.storage.sync.get(NOISE_STORAGE_KEY);
+    return NOISE_MODES.includes(noiseMode as NoiseMode) ? (noiseMode as NoiseMode) : "off";
+  } catch {
+    return "off";
+  }
+}
+
+export async function setNoiseMode(mode: NoiseMode): Promise<void> {
+  await chrome.storage.sync.set({ [NOISE_STORAGE_KEY]: mode });
+}

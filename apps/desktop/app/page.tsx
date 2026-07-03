@@ -83,6 +83,7 @@ const STAGE_LABEL: Record<string, string> = {
 type ProgressEvent = { job_id: string; stage: string; chunk: number; total: number };
 type DownloadEvent = { id: string; downloaded: number; total: number | null };
 type PreviewPaths = { original: string; cleaned: string };
+type CompanionStatus = { port: number };
 
 function basename(p: string): string {
   return p.split(/[\\/]/).pop() || p;
@@ -361,8 +362,34 @@ export default function Home() {
                 : "Remove music"}
           </Button>
         </div>
+        <ExtensionStatus />
       </div>
     </main>
+  );
+}
+
+function ExtensionStatus() {
+  const [companion, setCompanion] = useState<CompanionStatus | null>(null);
+
+  useEffect(() => {
+    if (!inTauri()) return;
+    invoke<CompanionStatus>("companion_status")
+      .then(setCompanion)
+      .catch(() => {});
+  }, []);
+
+  if (!companion) return null;
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-muted-100 px-3 py-2 text-sm">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium">Browser extension</p>
+        <p className="mt-0.5 text-xs text-muted-500">
+          Pairs automatically while Sukoon is running.
+        </p>
+      </div>
+      <span className="size-2 shrink-0 rounded-full bg-success" aria-hidden />
+    </div>
   );
 }
 

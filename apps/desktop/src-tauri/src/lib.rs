@@ -2,8 +2,9 @@
 //!
 //! Two jobs:
 //!   1. A drag-and-drop GUI to clean files (Fast locally; HQ locally if the hardware allows).
-//!   2. (Later) the browser extension's local companion: a localhost bridge for real-time desktop
-//!      filtering — see ROADMAP.md. Both front-ends drive the same resident [`EngineService`].
+//!   2. The browser extension's local companion: a localhost bridge for whole-file cleaning and
+//!      realtime streaming — see [`companion`]. Both front-ends drive the same resident
+//!      [`EngineService`].
 //!
 //! All separation is delegated to `sukoon-core`; this shell never reimplements it.
 
@@ -16,9 +17,9 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 mod companion;
 
-/// Keeps engines **resident**: each model is loaded once and reused across every job (and, later,
-/// the companion's real-time stream), so a batch doesn't reload weights per file. Keyed by engine
-/// id; the inner [`Engine`] has its own interior locking, so concurrent jobs serialize on inference.
+/// Keeps engines **resident**: each model is loaded once and reused across every job (and the
+/// companion's realtime stream), so a batch doesn't reload weights per file. Keyed by engine id;
+/// the inner [`Engine`] has its own interior locking, so concurrent jobs serialize on inference.
 #[derive(Default)]
 struct EngineService {
     engines: Mutex<HashMap<&'static str, Arc<dyn Engine>>>,
@@ -188,7 +189,8 @@ fn make_preview(engine: Arc<dyn Engine>, input: String) -> Result<PreviewPaths, 
     })
 }
 
-/// Companion bridge status (loopback port + pairing token) for the UI and extension pairing.
+/// Companion bridge status for the UI's extension row; the extension itself pairs automatically
+/// over the companion's `GET /pairing` endpoint.
 #[tauri::command]
 fn companion_status(companion: State<'_, companion::Companion>) -> companion::Companion {
     companion.inner().clone()
@@ -227,8 +229,9 @@ pub fn run() {
             app.manage(companion::start(app.handle().clone()));
 
             let show =
-                tauri::menu::MenuItem::with_id(app, "show", "Show Sukoon", true, None::<&str>)?;
-            let quit = tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+                tauri::menu::MenuItem::with_id(app, "show", "Open Sukoon", true, None::<&str>)?;
+            let quit =
+                tauri::menu::MenuItem::with_id(app, "quit", "Quit Sukoon", true, None::<&str>)?;
             let menu = tauri::menu::Menu::with_items(app, &[&show, &quit])?;
             // Menu-bar (tray) icon: a simple monochrome white glyph, flagged as a macOS template
             // image so the system renders it correctly (white on a dark bar, dark on a light bar) —
@@ -267,11 +270,30 @@ pub fn run() {
             }
             Ok(())
         })
+        // Background mode: closing the window hides it, so the companion keeps serving the
+        // extension; the app truly exits only via the tray's "Quit Sukoon".
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             clean_file,
             preview,
             companion_status
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|app, event| match event {
+            // Hiding the last window requests an exit; refuse it. Tray "Quit Sukoon" exits via
+            // `app.exit(0)`, which arrives with a code and passes through.
+            tauri::RunEvent::ExitRequested { code: None, api, .. } => api.prevent_exit(),
+            // Clicking the Dock icon while the window is hidden must bring it back.
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::Reopen { .. } => show_main(app),
+            _ => {
+                let _ = app; // only the macOS-only Reopen arm uses it
+            }
+        });
 }

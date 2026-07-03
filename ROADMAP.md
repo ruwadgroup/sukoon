@@ -55,6 +55,13 @@ the way past it — if it can be funded.
       natively-injected toggle: **Facebook**, **Instagram**, **X (Twitter)**, plus a **generic HTML5
       `<video>`** catch-all (player overlay) so it works on normal video players anywhere. _TikTok
       still pending._
+- [x] **Stereo DFN** in the extension — per-channel enhancement on capable devices instead of a mono
+      down-mix (low-end devices keep mono).
+- [x] **HQ Live** — the desktop companion streams the extension's live audio through the resident
+      **MDX separator** and back, while the extension delays the picture to match (WebCodecs delay
+      line): desktop-grade separation on a live page, a few seconds behind, with real-time
+      DeepFilterNet as the always-on fallback bed. See
+      [docs/research/hq-live.md](./docs/research/hq-live.md).
 - [ ] Firefox port; store listings + privacy policy.
 - [ ] Tauri Windows app (MDX-Net local; weights download on first use) — true separation for file
       cleaning, off the live stream.
@@ -113,12 +120,15 @@ the way past it — if it can be funded.
 | MDX-Net UVR 9482      | Low-RAM fallback (`mdx-lite`) | ✅                                 |
 | **Sukoon model**      | Speech-preserving separator   | 🔬 planned, funding-gated (≈ $15k) |
 
-> **In the extension, the only engine is DeepFilterNet** (real-time enhancement) — the MDX separators
-> run in the native/file tools (CLI, desktop), not on the live stream
-> ([why](./docs/research/extension-trials.md)). DeepFilterNet runs via ONNX Runtime (its bundled
-> `tract` runtime can't load the model on current toolchains), reusing `deep_filter`'s DSP; it's
-> CPU-preferred (~180× real-time, no GPU needed). Speeds and device support:
-> [docs/reference/performance.md](./docs/reference/performance.md).
+> **In the extension, the instant engine is DeepFilterNet** (real-time enhancement). The MDX
+> separators run natively (CLI, desktop) — and, with the desktop app running and paired, on the live
+> stream too via **HQ Live**: the extension buffers a few seconds, streams the audio through the
+> desktop's MDX engine, and delays the picture to match
+> ([architecture](./docs/research/hq-live.md); the earlier in-browser attempts and why they failed:
+> [extension trials](./docs/research/extension-trials.md)). On desktop, DeepFilterNet runs via ONNX
+> Runtime (its bundled `tract` runtime can't load the model on current toolchains), reusing
+> `deep_filter`'s DSP; it's CPU-preferred (~180× real-time, no GPU needed). Speeds and device
+> support: [docs/reference/performance.md](./docs/reference/performance.md).
 
 ## Non-goals
 

@@ -9,8 +9,11 @@
 //! The DFN3 model is embedded at compile time (`default-model`), so the resulting `.wasm` needs no
 //! network and no separate model download: install the extension and it works offline.
 //!
-//! Audio contract: 48 kHz, mono, processed in blocks of exactly [`DfnDenoiser::frame_length`]
-//! samples. Feed a frame to [`DfnDenoiser::process_frame`]; get back the enhanced frame.
+//! Audio contract: 48 kHz, 1 or 2 channels, processed in blocks of exactly
+//! [`DfnDenoiser::frame_length`] samples per channel, **planar** (all of channel 0, then all of
+//! channel 1). Feed a frame to [`DfnDenoiser::process_frame`]; get back the enhanced frame in the
+//! same layout. Stereo runs both channels through one model instance (shared weights, per-channel
+//! state), so claimed media keeps its stereo image instead of a mono down-mix.
 
 // The `deep_filter` package's library is named `df`.
 use df::tract::{DfParams, DfTract, RuntimeParams};
@@ -18,17 +21,18 @@ use ndarray::prelude::*;
 use wasm_bindgen::prelude::*;
 
 /// A live DeepFilterNet denoiser. Construct once, then call [`process_frame`](Self::process_frame)
-/// on consecutive `frame_length`-sample blocks of 48 kHz mono audio.
+/// on consecutive `channels * frame_length`-sample planar blocks of 48 kHz audio.
 #[wasm_bindgen]
 pub struct DfnDenoiser {
     inner: DfTract,
+    channels: usize,
     /// Scratch input/output arrays reused across frames to avoid per-frame allocation.
     out: Array2<f32>,
 }
 
 #[wasm_bindgen]
 impl DfnDenoiser {
-    /// Build the engine from the embedded DFN3 model.
+    /// Build the engine from the embedded DFN3 model, for `channels` (1 = mono, 2 = stereo).
     ///
     /// `atten_lim_db` caps how much the model may attenuate (0 = no limit, the upstream default).
     /// A finite value (e.g. 100) leaves a little of the original through, which can sound more
@@ -39,9 +43,12 @@ impl DfnDenoiser {
     /// noisy bins that markedly reduces the residual "musical noise"/warble of real-time DFN — the
     /// single cheapest lever toward the cleaner offline-desktop quality. Cost is negligible per frame.
     #[wasm_bindgen(constructor)]
-    pub fn new(atten_lim_db: f32) -> Result<DfnDenoiser, JsError> {
+    pub fn new(atten_lim_db: f32, channels: usize) -> Result<DfnDenoiser, JsError> {
         console_error_panic_hook::set_once();
-        let r_params = RuntimeParams::default_with_ch(1)
+        if !(1..=2).contains(&channels) {
+            return Err(JsError::new("channels must be 1 or 2"));
+        }
+        let r_params = RuntimeParams::default_with_ch(channels)
             .with_atten_lim(atten_lim_db)
             .with_post_filter(0.02);
         let df_params = DfParams::default(); // embedded DeepFilterNet3_onnx.tar.gz
@@ -50,11 +57,13 @@ impl DfnDenoiser {
         let hop = inner.hop_size;
         Ok(DfnDenoiser {
             inner,
-            out: Array2::zeros((1, hop)),
+            channels,
+            out: Array2::zeros((channels, hop)),
         })
     }
 
-    /// The exact block size the engine consumes/produces per call (the model's hop size, 480 @ 48k).
+    /// The exact per-channel block size the engine consumes/produces per call (the model's hop
+    /// size, 480 @ 48k).
     #[wasm_bindgen(getter)]
     pub fn frame_length(&self) -> usize {
         self.inner.hop_size
@@ -66,17 +75,20 @@ impl DfnDenoiser {
         48_000
     }
 
-    /// Enhance one frame of exactly [`frame_length`](Self::frame_length) mono samples, returning the
-    /// cleaned frame (speech kept, music/noise suppressed). Maintains recurrent state across calls.
+    /// Enhance one planar frame of exactly `channels * frame_length` samples, returning the
+    /// cleaned frame in the same layout (speech kept, music/noise suppressed). Maintains recurrent
+    /// state across calls.
     pub fn process_frame(&mut self, input: &[f32]) -> Result<Vec<f32>, JsError> {
         let hop = self.inner.hop_size;
-        if input.len() != hop {
+        if input.len() != self.channels * hop {
             return Err(JsError::new(&format!(
-                "process_frame expected {hop} samples, got {}",
+                "process_frame expected {} samples ({} channels x {hop}), got {}",
+                self.channels * hop,
+                self.channels,
                 input.len()
             )));
         }
-        let noisy = ArrayView2::from_shape((1, hop), input)
+        let noisy = ArrayView2::from_shape((self.channels, hop), input)
             .map_err(|e| JsError::new(&format!("input reshape failed: {e}")))?;
         self.inner
             .process(noisy, self.out.view_mut())

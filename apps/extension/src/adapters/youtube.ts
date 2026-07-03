@@ -54,4 +54,33 @@ export class YouTubeAdapter extends AbstractAdapter {
     document.addEventListener("yt-navigate-finish", cb);
     return () => document.removeEventListener("yt-navigate-finish", cb);
   }
+
+  /** YouTube marks ad breaks with player classes; watch them so HQ Live can step aside. */
+  observeAds(cb: (showing: boolean) => void): () => void {
+    let last = false;
+    let watched: Element | null = null;
+    const playerObserver = new MutationObserver(() => check());
+    const check = () => {
+      const player = document.querySelector("#movie_player");
+      if (player && player !== watched) {
+        watched = player;
+        playerObserver.disconnect();
+        playerObserver.observe(player, { attributes: true, attributeFilter: ["class"] });
+      }
+      const showing =
+        player !== null &&
+        (player.classList.contains("ad-showing") || player.classList.contains("ad-interrupting"));
+      if (showing !== last) {
+        last = showing;
+        cb(showing);
+      }
+    };
+    // The player node can appear late or be replaced across navigations; re-resolve it cheaply.
+    const poll = window.setInterval(check, 1_000);
+    check();
+    return () => {
+      clearInterval(poll);
+      playerObserver.disconnect();
+    };
+  }
 }
