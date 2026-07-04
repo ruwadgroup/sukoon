@@ -139,7 +139,7 @@ jobs:
             libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf build-essential
       - run: pnpm install --frozen-lockfile
       - name: Build and upload desktop bundles
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ github.token }}
           # Without the secrets below the app is **ad-hoc signed** (tauri.conf
